@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Text Analyzer</title>
+</head>
+<body>
+    <h1>Text Analyzer</h1>
+    <textarea id="inputText" rows="10" cols="50"></textarea><br>
+    <button onclick="analyze()">Analyze</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function analyze() {
+            const text = document.getElementById('inputText').value;
+            const response = await fetch(`http://127.0.0.1:8000/analyze?text=${encodeURIComponent(text)}`);
+            const data = await response.json();
+            document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html>
