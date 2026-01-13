@@ -4,7 +4,7 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello, World!"}
+    return {"message": "Amirlan Pro max"}
 
 @app.get("/analyze")
 def analyze_text(text: str):
