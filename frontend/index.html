@@ -1,20 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Text Analyzer</title>
 </head>
 <body>
     <h1>Text Analyzer</h1>
-    <textarea id="inputText" rows="10" cols="50"></textarea><br>
+    <textarea id="inputText" rows="10" cols="50" placeholder="Enter your text here..."></textarea><br>
     <button onclick="analyze()">Analyze</button>
-    <pre id="result"></pre>
+
+    <h2>Analysis Result:</h2>
+    <p>Total words: <span id="wordCount">0</span></p>
+    <p>Unique words: <span id="uniqueWords">0</span></p>
+    <p>Character count: <span id="charCount">0</span></p>
+    <p>Line count: <span id="lineCount">0</span></p>
+
+    <div id="errorMessage" style="color: red; display: none;">
+        An error occurred while analyzing the text. Please try again.
+    </div>
 
     <script>
         async function analyze() {
             const text = document.getElementById('inputText').value;
-            const response = await fetch(`http://127.0.0.1:8000/analyze?text=${encodeURIComponent(text)}`);
-            const data = await response.json();
-            document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+
+            // Проверка, что текст не пустой
+            if (text.trim() === "") {
+                alert("Please enter some text to analyze.");
+                return;
+            }
+
+            try {
+                // Отправка запроса на бэкенд
+                const response = await fetch(`http://127.0.0.1:8000/analyze?text=${encodeURIComponent(text)}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data from server');
+                }
+
+                const data = await response.json();
+
+                // Обновление UI с результатами анализа
+                document.getElementById('wordCount').innerText = data.total_words;
+                document.getElementById('uniqueWords').innerText = data.unique_words;
+                document.getElementById('charCount').innerText = data.char_count;
+                document.getElementById('lineCount').innerText = data.line_count;
+
+                // Скрытие ошибки, если она была
+                document.getElementById('errorMessage').style.display = 'none';
+
+            } catch (error) {
+                // Отображение сообщения об ошибке
+                document.getElementById('errorMessage').style.display = 'block';
+                console.error('Error:', error);
+            }
         }
     </script>
 </body>
