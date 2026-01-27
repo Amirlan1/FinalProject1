@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Stock Price Chart</h1>
+    <canvas id="stockChart" width="400" height="200"></canvas>
+
+    <script>
+        const ctx = document.getElementById('stockChart').getContext('2d');
+        const chartData = {{ chart_data | tojson }};
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Stock Price',
+                    data: chartData.data,
+                    borderColor: 'rgb(75, 192, 192)',
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'category',
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
