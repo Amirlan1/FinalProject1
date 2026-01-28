@@ -3,7 +3,8 @@ from fastapi.templating import Jinja2Templates
 import yfinance as yf
 from fastapi.responses import HTMLResponse
 from datetime import datetime
-import uvicorn  # импортируем uvicorn прямо в файл
+import uvicorn
+from databasa import create_users_table
 
 app = FastAPI()
 
@@ -34,7 +35,21 @@ async def update_graph(request: Request, ticker: str = Form(...)):
     }
     return templates.TemplateResponse("index.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
 
+@app.get("/register", response_class=HTMLResponse)
+async def register(request: Request):
+    return templates.TemplateResponse(
+        "register.html",
+        {"request": request}
+    )
 
-# 🔹 Этот блок добавляем в конец файла
+
+@app.get("/login", response_class=HTMLResponse)
+async def login(request: Request):
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request}
+    )
+
+
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

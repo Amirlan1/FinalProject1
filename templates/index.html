@@ -1,38 +1,90 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Platform</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Crypto Platform</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            padding: 40px;
+            text-align: center;
+            background: #020617;
+        }
+
+        h1 {
+            font-size: 36px;
+        }
+
+        .buttons {
+            margin-top: 25px;
+        }
+
+        .buttons a {
+            text-decoration: none;
+            padding: 12px 25px;
+            margin: 10px;
+            background: #2563eb;
+            color: white;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 40px;
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .news {
+            background: #020617;
+            padding: 25px;
+            border-radius: 8px;
+        }
+
+        .news h2 {
+            margin-bottom: 15px;
+        }
+
+        .news ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .news li {
+            padding: 10px 0;
+            border-bottom: 1px solid #1e293b;
+        }
+    </style>
 </head>
 <body>
-    <h1>Stock Price Chart</h1>
-    <canvas id="stockChart" width="400" height="200"></canvas>
 
-    <script>
-        const ctx = document.getElementById('stockChart').getContext('2d');
-        const chartData = {{ chart_data | tojson }};
-        
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    label: 'Stock Price',
-                    data: chartData.data,
-                    borderColor: 'rgb(75, 192, 192)',
-                    fill: false
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        type: 'category',
-                    }
-                }
-            }
-        });
-    </script>
+<header>
+    <h1>Добро пожаловать на </h1>
+    <p></p>
+
+    <div class="buttons">
+        <a href="/register">Регистрация</a>
+        <a href="/login">Вход</a>
+    </div>
+</header>
+
+<div class="container">
+    <div class="news">
+        <h2>Основные новости</h2>
+        <ul>
+            {% for item in news %}
+                <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
 </body>
 </html>
