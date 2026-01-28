@@ -5,3 +5,6 @@ pandas
 numpy
 jinja2
 python-multipart
+passlib
+bcrypt
+auth
