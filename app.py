@@ -10,12 +10,10 @@ from security import hash_password
 import sqlite3
 import os
 from pathlib import Path
-
-
 BASE_DIR = Path(__file__).resolve().parent
-db_folder = BASE_DIR / "db"     
-db_folder.mkdir(exist_ok=True)
+db_folder = BASE_DIR / "db"
 db_path = db_folder / "users.db"
+
 
 
 app = FastAPI()
@@ -55,6 +53,17 @@ async def home(request: Request):
         "data": [item['Close'] for item in stock_data]
     }
     return templates.TemplateResponse("index.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
+
+@app.get("/gra", response_class=HTMLResponse)
+async def home(request: Request):
+    ticker = "AAPL"
+    stock_data, err = await get_stock_data(ticker)
+    chart_data = {
+        "labels": [str(item['Date']).split()[0] for item in stock_data],
+        "data": [item['Close'] for item in stock_data]
+    }
+    return templates.TemplateResponse("graphic.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
+
 
 @app.post("/update_graph/")
 async def update_graph(request: Request, ticker: str = Form(...)):
