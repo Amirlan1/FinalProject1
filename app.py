@@ -9,25 +9,47 @@ from passlib.context import CryptContext
 from security import hash_password
 import sqlite3
 import os
+from pathlib import Path
 
-db_folder = r"C:\Users\user\Documents\GitHub\FinalProject1"
-os.makedirs(db_folder, exist_ok=True)
-db_path = os.path.join(db_folder, "users.db")
+
+BASE_DIR = Path(__file__).resolve().parent
+db_folder = BASE_DIR / "db"     
+db_folder.mkdir(exist_ok=True)
+db_path = db_folder / "users.db"
+
 
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
 
-async def get_stock_data(ticker):
-    stock = yf.Ticker(ticker)
-    hist = stock.history(period="1mo")
-    data = hist[['Close']].reset_index()
-    return data.to_dict(orient='records')
+async def get_stock_data(ticker: str):
+    try:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period="1mo", interval="1d", actions=False, auto_adjust=False)
+    except Exception as e:
+        return [], f"yfinance error: {e}"
+
+    if hist is None or hist.empty:
+        return [], "No data from Yahoo. Try ticker like AAPL / MSFT / TSLA (crypto: BTC-USD)."
+
+    hist = hist.reset_index()
+
+    out = []
+    for i in range(len(hist)):
+        d = hist.loc[i, "Date"]
+        c = hist.loc[i, "Close"]
+        out.append({
+            "date": d.strftime("%Y-%m-%d"),
+            "close": float(c)
+        })
+
+    return out, None
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     ticker = "AAPL"
-    stock_data = await get_stock_data(ticker)
+    stock_data, err = await get_stock_data(ticker)
     chart_data = {
         "labels": [str(item['Date']).split()[0] for item in stock_data],
         "data": [item['Close'] for item in stock_data]
