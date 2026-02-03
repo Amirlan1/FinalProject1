@@ -5,6 +5,5 @@ pandas
 numpy
 jinja2
 python-multipart
-passlib
-bcrypt
+argon2-cffi
 auth

@@ -5,20 +5,24 @@ from fastapi.responses import HTMLResponse
 from datetime import datetime
 import uvicorn
 from databasa import create_users_table, get_db
-from passlib.context import CryptContext
-from security import hash_password
 import sqlite3
+from fastapi import status
 import os
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 db_folder = BASE_DIR / "db"
 db_path = db_folder / "users.db"
 
 
-
+ph = PasswordHasher()
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
+
+
 
 async def get_stock_data(ticker: str):
     try:
@@ -82,30 +86,92 @@ def get_register(request: Request):
     return templates.TemplateResponse("register.html", {
         "request": request
     })
-
 @app.post("/register")
 def post_register(username: str = Form(...), password: str = Form(...), email: str = Form(None)):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    hashed_pass = hash_password(password)
-
+    safe_password = password[:256]  
+    hashed_pass = ph.hash(safe_password)
     cursor.execute('''
         INSERT INTO users (username, password, email) VALUES (?, ?, ?)
     ''', (username, hashed_pass, email))
     conn.commit()
-    cursor.execute('SELECT * FROM users')
-    all_users = cursor.fetchall()
-
-
     conn.close()
-
+    
+    return RedirectResponse("/login", status_code=302)
 
 
 @app.get("/login", response_class=HTMLResponse)
-async def login(request: Request):
+def get_login(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+
+
+@app.post("/login")
+def post_login(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, password, username FROM users WHERE email = ?",
+        (email,)
+    )
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        return "No such user"
+
+    user_id, hashed_pass, username = user
+
+    try:
+        ph.verify(hashed_pass, password)
+    except VerifyMismatchError:
+        return "Wrong password"
+
+    response = RedirectResponse("/profile", status_code=302)
+    response.set_cookie(key="user_id", value=str(user_id))
+    return response
+
+
+
+def get_current_user(request: Request):
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        return None
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, username, email FROM users WHERE id = ?",
+        (user_id,)
+    )
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+
+
+@app.get("/profile", response_class=HTMLResponse)
+def profile(request: Request):
+    user = get_current_user(request)
+
+    if not user:
+        return RedirectResponse("/login")
+
+    user_id, username, email = user
+
     return templates.TemplateResponse(
-        "login.html",
-        {"request": request}
+        "profile.html",
+        {
+            "request": request,
+            "username": username,
+            "email": email
+        }
     )
 
 
