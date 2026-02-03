@@ -77,9 +77,14 @@ async def update_graph(request: Request, ticker: str = Form(...)):
 
 
 
+@app.get("/register")
+def get_register(request: Request):
+    return templates.TemplateResponse("register.html", {
+        "request": request
+    })
+
 @app.post("/register")
 def post_register(username: str = Form(...), password: str = Form(...), email: str = Form(None)):
-    print("Добавляем пользователя в базу:", db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     hashed_pass = hash_password(password)
@@ -90,11 +95,9 @@ def post_register(username: str = Form(...), password: str = Form(...), email: s
     conn.commit()
     cursor.execute('SELECT * FROM users')
     all_users = cursor.fetchall()
-    print("Все пользователи в базе:", all_users)
+
 
     conn.close()
-    return f"Пользователь {username} успешно зарегистрирован!"
-
 
 
 
