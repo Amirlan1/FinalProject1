@@ -37,8 +37,8 @@ async def get_stock_data(ticker: str):
         d = hist.loc[i, "Date"]
         c = hist.loc[i, "Close"]
         out.append({
-            "date": d.strftime("%Y-%m-%d"),
-            "close": float(c)
+            "Date": d.strftime("%Y-%m-%d"),
+            "Close": float(c)
         })
 
     return out, None
@@ -74,23 +74,6 @@ async def update_graph(request: Request, ticker: str = Form(...)):
     }
     return templates.TemplateResponse("index.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
 
-@app.get("/register", response_class=HTMLResponse)
-async def register(request: Request):
-    return templates.TemplateResponse(
-        "register.html",
-        {"request": request}
-    )
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login(request: Request):
-    return templates.TemplateResponse(
-        "login.html",
-        {"request": request}
-    )
-
-
-
 
 
 
@@ -99,8 +82,6 @@ def post_register(username: str = Form(...), password: str = Form(...), email: s
     print("Добавляем пользователя в базу:", db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-
-    # хешируем пароль
     hashed_pass = hash_password(password)
 
     cursor.execute('''
@@ -113,6 +94,16 @@ def post_register(username: str = Form(...), password: str = Form(...), email: s
 
     conn.close()
     return f"Пользователь {username} успешно зарегистрирован!"
+
+
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login(request: Request):
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request}
+    )
 
 
 if __name__ == "__main__":
