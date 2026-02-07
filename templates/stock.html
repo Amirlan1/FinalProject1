@@ -1,93 +1,92 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>Stocks</title>
-  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    #err { color: crimson; white-space: pre-wrap; margin-top: 10px; }
-    #ok { color: green; white-space: pre-wrap; margin-top: 10px; }
-    .row { margin: 8px 0; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stocking</title>
+
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="/static/app.js" defer></script>
 </head>
+
 <body>
-  <h3>Stocks (Chart + Buy/Sell)</h3>
+  <div class="topbar">
+    <div class="brand">STOCKING</div>
 
-  <div class="row">
-    <input id="sym" value="AAPL" />
-    <select id="tf">
-      <option value="1Day">1Day</option>
-      <option value="1Hour">1Hour</option>
-    </select>
-    <button onclick="loadBars()">Load chart</button>
-    <button onclick="loadAccount()">Account</button>
-    <button onclick="loadPositions()">Positions</button>
+    <div class="controls">
+      <input id="sym" list="symList" value="AAPL" class="input" placeholder="Symbol (AAPL, TSLA, MSFT)" />
+      <datalist id="symList">
+        <option value="AAPL"></option>
+        <option value="MSFT"></option>
+        <option value="TSLA"></option>
+        <option value="NVDA"></option>
+        <option value="AMZN"></option>
+        <option value="GOOGL"></option>
+        <option value="META"></option>
+        <option value="NFLX"></option>
+      </datalist>
+
+      <select id="tf" class="input">
+        <option value="1Day" selected>1Day</option>
+        <option value="1Hour">1Hour (demo)</option>
+      </select>
+
+      <select id="lim" class="input">
+        <option value="200">200 bars</option>
+        <option value="1000">1000 bars</option>
+        <option value="5000">5000 bars</option>
+        <option value="0">ALL TIME</option>
+      </select>
+
+      <button id="btnLoad" class="btn primary">Load</button>
+      <button id="btnMA" class="btn">MA 20/50</button>
+      <button id="btnBuy" class="btn good">Buy 1</button>
+      <button id="btnSell" class="btn bad">Sell 1</button>
+      <button id="btnReset" class="btn ghost">Reset</button>
+    </div>
+
+    <div class="rightinfo">
+      <div class="mini">
+        <div class="miniLabel">Cash</div>
+        <div id="cash" class="miniVal">—</div>
+      </div>
+      <div class="mini">
+        <div class="miniLabel">Equity</div>
+        <div id="eq" class="miniVal">—</div>
+      </div>
+    </div>
   </div>
 
-  <div class="row">
-    <input id="qty" type="number" value="1" min="1" />
-    <button onclick="sendOrder('buy')">BUY</button>
-    <button onclick="sendOrder('sell')">SELL</button>
+  <div class="layout">
+    <div class="main">
+      <div class="panelTitle">
+        <div id="title">Chart</div>
+        <div class="hint">
+          Drawing: modebar → line/rect/circle → draw → eraser
+        </div>
+      </div>
+
+      <div id="chart" class="chart"></div>
+
+      <div class="note">
+        Источник данных: Stooq (исторические daily). Не real-time.
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="cardTitle">Positions</div>
+        <div id="pos" class="table"></div>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">Orders</div>
+        <div id="ord" class="table"></div>
+      </div>
+
+      <div id="err" class="error hidden"></div>
+    </div>
   </div>
-
-  <div id="ok"></div>
-  <div id="err"></div>
-  <div id="chart" style="width:950px;height:520px;"></div>
-  <pre id="data"></pre>
-
-<script>
-  function show(okMsg, errMsg) {
-    document.getElementById("ok").textContent = okMsg || "";
-    document.getElementById("err").textContent = errMsg || "";
-  }
-
-  async function loadBars() {
-    show("", "");
-    const sym = document.getElementById("sym").value.trim();
-    const tf = document.getElementById("tf").value;
-
-    const r = await fetch(`/api/bars?symbol=${encodeURIComponent(sym)}&timeframe=${encodeURIComponent(tf)}&limit=200`);
-    const j = await r.json();
-    if (!r.ok) { show("", j.detail || "error"); return; }
-
-    const x = j.map(p => p.time);
-    const y = j.map(p => p.close);
-
-    Plotly.newPlot("chart", [{ x, y, type: "scatter" }], { title: `${sym} close (${tf})` });
-    show(`Loaded ${j.length} bars`, "");
-  }
-
-  async function loadAccount() {
-    show("", "");
-    const r = await fetch(`/api/account`);
-    const j = await r.json();
-    if (!r.ok) { show("", j.detail || "error"); return; }
-    document.getElementById("data").textContent = JSON.stringify(j, null, 2);
-    show("Account loaded", "");
-  }
-
-  async function loadPositions() {
-    show("", "");
-    const r = await fetch(`/api/positions`);
-    const j = await r.json();
-    if (!r.ok) { show("", j.detail || "error"); return; }
-    document.getElementById("data").textContent = JSON.stringify(j, null, 2);
-    show("Positions loaded", "");
-  }
-
-  async function sendOrder(side) {
-    show("", "");
-    const sym = document.getElementById("sym").value.trim();
-    const qty = parseInt(document.getElementById("qty").value, 10);
-
-    const r = await fetch(`/api/order?symbol=${encodeURIComponent(sym)}&qty=${qty}&side=${side}`, { method: "POST" });
-    const j = await r.json();
-    if (!r.ok) { show("", j.detail || "error"); return; }
-
-    document.getElementById("data").textContent = JSON.stringify(j, null, 2);
-    show(`Order sent: ${side.toUpperCase()} ${qty} ${sym}`, "");
-  }
-</script>
 </body>
 </html>

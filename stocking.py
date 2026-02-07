@@ -1,140 +1,244 @@
-from fastapi import FastAPI, Query, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-
-from dotenv import load_dotenv
 from pathlib import Path
-import os
+import io
+import time
+import threading
 import requests
+import pandas as pd
 
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
+from fastapi import FastAPI, Request, Query, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 
-# --- env ---
-env_path = Path(__file__).with_name(".env")
-load_dotenv(dotenv_path=env_path)
+BASE = Path(__file__).resolve().parent
 
-KEY = os.getenv("ALPACA_KEY")
-SECRET = os.getenv("ALPACA_SECRET")
-PAPER = os.getenv("ALPACA_PAPER", "1") == "1"
-DATA_BASE = os.getenv("ALPACA_DATA_BASE", "https://data.alpaca.markets")
-
-if not KEY or not SECRET:
-    raise RuntimeError("No keys. Check .env near stocking.py: ALPACA_KEY / ALPACA_SECRET")
-
-# --- clients ---
-trade = TradingClient(api_key=KEY, secret_key=SECRET, paper=PAPER)  # paper=True -> paper trading :contentReference[oaicite:12]{index=12}
-
-# --- app ---
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+
+templates = Jinja2Templates(directory=str(BASE / "templates"))
+app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
+
+state_lock = threading.Lock()
+
+cash = 10000.0
+positions = {}   
+orders = []     
+order_id = 1
+
+cache_lock = threading.Lock()
+cache = {}  
+CACHE_TTL = 60  
+
+def sym_fix(symbol: str) -> str:
+    s = (symbol or "").strip()
+    if not s:
+        raise HTTPException(400, "symbol is required")
+
+    if "." in s:
+        return s.lower()
+    return f"{s.lower()}.us"
 
 
-def api_fail(code: int, msg: str):
-    raise HTTPException(status_code=code, detail=msg)
+def load_stooq(symbol_fixed: str) -> pd.DataFrame:
+    url = f"https://stooq.com/q/d/l/?s={symbol_fixed}&i=d"
+    r = requests.get(url, timeout=20)
+    r.raise_for_status()
 
+    df = pd.read_csv(io.StringIO(r.text))
+    if df.empty or "Date" not in df.columns:
+        return pd.DataFrame()
+
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"]).set_index("Date").sort_index()
+
+    for col in ["Open", "High", "Low", "Close"]:
+        if col not in df.columns:
+            return pd.DataFrame()
+
+    if "Volume" not in df.columns:
+        df["Volume"] = 0
+
+    return df
+
+
+def get_df(symbol_fixed: str) -> pd.DataFrame:
+    now = time.time()
+    with cache_lock:
+        item = cache.get(symbol_fixed)
+        if item and (now - item["ts"] < CACHE_TTL):
+            return item["df"]
+
+    df = load_stooq(symbol_fixed)
+
+    with cache_lock:
+        cache[symbol_fixed] = {"ts": now, "df": df}
+
+    return df
+
+
+def last_price(symbol_fixed: str) -> float:
+    df = get_df(symbol_fixed)
+    if df.empty:
+        raise HTTPException(404, "No data for symbol")
+    return float(df["Close"].iloc[-1])
+
+
+def equity_value() -> float:
+    eq = cash
+    for sym, p in positions.items():
+        pr = last_price(sym_fix(sym))
+        eq += p["qty"] * pr
+    return eq
 
 @app.get("/", response_class=HTMLResponse)
-def page(request: Request):
+def home(request: Request):
     return templates.TemplateResponse("stock.html", {"request": request})
 
 
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
+
+
+@app.get("/api/health")
+def health():
+    return {"ok": True}
+
+@app.get("/api/bars")
+def api_bars(
+    symbol: str = Query(...),
+    timeframe: str = Query("1Day"),
+    limit: int = Query(200, ge=0, le=20000),
+):
+    sym = symbol.strip().upper()
+    sfix = sym_fix(sym)
+
+    df = get_df(sfix)
+    if df.empty:
+        raise HTTPException(404, "No data for symbol")
+
+    if limit == 0:
+        df2 = df
+    else:
+        df2 = df.tail(limit)
+
+    bars = []
+    for dt, row in df2.iterrows():
+        bars.append({
+            "t": dt.strftime("%Y-%m-%d"),
+            "o": float(row["Open"]),
+            "h": float(row["High"]),
+            "l": float(row["Low"]),
+            "c": float(row["Close"]),
+            "v": float(row["Volume"]) if "Volume" in df2.columns else 0.0,
+        })
+
+    return JSONResponse({
+        "symbol": sym,
+        "symbol_fixed": sfix,
+        "timeframe": timeframe,
+        "count": len(bars),
+        "bars": bars
+    })
+
 @app.get("/api/account")
-def account():
-    try:
-        a = trade.get_account()
-        return {
-            "cash": str(a.cash),
-            "buying_power": str(a.buying_power),
-            "portfolio_value": str(a.portfolio_value),
-            "status": str(a.status)
-        }
-    except Exception as e:
-        api_fail(500, "Account error: " + str(e))
+def api_account():
+    eq = equity_value()
+    return JSONResponse({
+        "cash": round(cash, 2),
+        "equity": round(eq, 2),
+        "buying_power": round(cash, 2),
+    })
 
 
 @app.get("/api/positions")
-def positions():
-    try:
-        ps = trade.get_all_positions()
-        out = []
-        for p in ps:
-            out.append({
-                "symbol": p.symbol,
-                "qty": str(p.qty),
-                "avg_entry_price": str(p.avg_entry_price),
-                "market_value": str(p.market_value),
-                "unrealized_pl": str(p.unrealized_pl),
-            })
-        return out
-    except Exception as e:
-        api_fail(500, "Positions error: " + str(e))
+def api_positions():
+    items = []
+    for sym, p in positions.items():
+        pr = last_price(sym_fix(sym))
+        mv = p["qty"] * pr
+        upl = (pr - p["avg"]) * p["qty"]
+        items.append({
+            "symbol": sym,
+            "qty": int(p["qty"]),
+            "avg_entry_price": round(float(p["avg"]), 4),
+            "current_price": round(pr, 4),
+            "market_value": round(mv, 2),
+            "unrealized_pl": round(upl, 2),
+        })
+    return JSONResponse(items)
+
+
+@app.get("/api/orders")
+def api_orders():
+    return JSONResponse(list(reversed(orders[-200:])))
 
 
 @app.post("/api/order")
-def place_order(
-    symbol: str = Query(..., min_length=1, max_length=10),
-    qty: int = Query(..., ge=1, le=100000),
-    side: str = Query(...),  # buy / sell
+def api_order(
+    symbol: str = Query(...),
+    qty: int = Query(..., ge=1, le=1000000),
+    side: str = Query(...),
 ):
+    global cash, positions, orders, order_id
+
     sym = symbol.strip().upper()
-    sd = side.strip().lower()
+    side2 = side.strip().lower()
+    if side2 not in ["buy", "sell"]:
+        raise HTTPException(400, "side must be buy or sell")
 
-    if sd not in ["buy", "sell"]:
-        api_fail(400, "side must be buy or sell")
+    sfix = sym_fix(sym)
+    price = last_price(sfix)
+    cost = qty * price
 
-    try:
-        req = MarketOrderRequest(
-            symbol=sym,
-            qty=qty,
-            side=OrderSide.BUY if sd == "buy" else OrderSide.SELL,
-            time_in_force=TimeInForce.DAY
-        )
-        o = trade.submit_order(req)
-        return {"id": o.id, "symbol": sym, "qty": qty, "side": sd, "status": str(o.status)}
-    except Exception as e:
-        msg = str(e)
-        if "401" in msg or "Unauthorized" in msg:
-            api_fail(401, "Trading 401 Unauthorized. Check paper keys and paper mode.")
-        api_fail(500, "Order error: " + msg[:200])
+    with state_lock:
+        if side2 == "buy":
+            if cash < cost:
+                raise HTTPException(400, "Not enough cash")
 
+            cash -= cost
 
-@app.get("/api/bars")
-def bars(
-    symbol: str = Query(..., min_length=1, max_length=10),
-    limit: int = Query(200, ge=1, le=2000),
-    timeframe: str = Query("1Day")  # 1Day / 1Hour
-):
-    sym = symbol.strip().upper()
+            if sym not in positions:
+                positions[sym] = {"qty": qty, "avg": price}
+            else:
+                oldq = int(positions[sym]["qty"])
+                olda = float(positions[sym]["avg"])
+                newq = oldq + qty
+                newa = (oldq * olda + qty * price) / newq
+                positions[sym]["qty"] = newq
+                positions[sym]["avg"] = newa
 
-    tf = timeframe
-    if tf not in ["1Day", "1Hour"]:
-        api_fail(400, "timeframe must be 1Day or 1Hour")
+        else:
+            if sym not in positions or int(positions[sym]["qty"]) < qty:
+                raise HTTPException(400, "Not enough shares")
 
-    headers = {
-        "APCA-API-KEY-ID": KEY,
-        "APCA-API-SECRET-KEY": SECRET
-    }  # Market Data auth headers :contentReference[oaicite:13]{index=13}
+            positions[sym]["qty"] = int(positions[sym]["qty"]) - qty
+            cash += cost
+            if int(positions[sym]["qty"]) == 0:
+                del positions[sym]
 
-    url = f"{DATA_BASE}/v2/stocks/bars"
-    params = {"symbols": sym, "timeframe": tf, "limit": limit}
+        oid = order_id
+        order_id += 1
 
-    r = requests.get(url, headers=headers, params=params, timeout=20)
-
-    if r.status_code == 401:
-        api_fail(401, "Market Data 401 Unauthorized. Check keys or DATA_BASE domain.")
-    if not r.ok:
-        api_fail(r.status_code, f"Market Data error {r.status_code}: {r.text[:200]}")
-
-    data = r.json()
-    bars = data.get("bars", {}).get(sym, [])
-
-    out = []
-    for b in bars:
-        out.append({
-            "time": b["t"],
-            "close": b["c"]
+        orders.append({
+            "id": oid,
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "symbol": sym,
+            "side": side2,
+            "qty": int(qty),
+            "price": round(price, 4),
+            "notional": round(cost, 2),
         })
-    return out
+
+    return JSONResponse({"status": "filled", "order_id": oid})
+
+
+@app.post("/api/reset")
+def api_reset():
+    global cash, positions, orders, order_id
+    with state_lock:
+        cash = 10000.0
+        positions = {}
+        orders = []
+        order_id = 1
+    return {"ok": True}
