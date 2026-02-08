@@ -12,7 +12,7 @@
 
 <body>
   <div class="topbar">
-    <div class="brand">STOCKING</div>
+    <a class="brand" href="/">STOCKING</a>
 
     <div class="controls">
       <input id="sym" list="symList" value="AAPL" class="input" placeholder="Symbol (AAPL, TSLA, MSFT)" />
@@ -33,10 +33,10 @@
       </select>
 
       <select id="lim" class="input">
+        <option value="0" selected>ALL TIME</option>
         <option value="200">200 bars</option>
         <option value="1000">1000 bars</option>
         <option value="5000">5000 bars</option>
-        <option value="0">ALL TIME</option>
       </select>
 
       <button id="btnLoad" class="btn primary">Load</button>
@@ -48,12 +48,27 @@
 
     <div class="rightinfo">
       <div class="mini">
+        <div class="miniLabel">Mode</div>
+        <div id="mode" class="miniVal">—</div>
+      </div>
+      <div class="mini">
         <div class="miniLabel">Cash</div>
         <div id="cash" class="miniVal">—</div>
       </div>
       <div class="mini">
         <div class="miniLabel">Equity</div>
         <div id="eq" class="miniVal">—</div>
+      </div>
+
+      <div id="accountWrap" class="accountWrap">
+        <button id="btnAccount" class="btn accountBtn">Account ▾</button>
+        <div id="accountMenu" class="menu hidden">
+          <a class="menuItem" href="/profile">Profile</a>
+          <a class="menuItem" href="/funding">Deposit / Withdraw</a>
+          <div class="menuSep"></div>
+          <button id="toDemo" class="menuBtn">Switch to DEMO</button>
+          <button id="toReal" class="menuBtn">Switch to REAL</button>
+        </div>
       </div>
     </div>
   </div>
@@ -62,16 +77,11 @@
     <div class="main">
       <div class="panelTitle">
         <div id="title">Chart</div>
-        <div class="hint">
-          Drawing: modebar → line/rect/circle → draw → eraser
-        </div>
+        <div class="hint">Modebar: line/rect/circle + eraser</div>
       </div>
 
       <div id="chart" class="chart"></div>
-
-      <div class="note">
-        Источник данных: Stooq (исторические daily). Не real-time.
-      </div>
+      <div class="note">История: Stooq daily. Не real-time.</div>
     </div>
 
     <div class="side">

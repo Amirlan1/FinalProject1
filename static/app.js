@@ -4,12 +4,14 @@ const el = (id) => document.getElementById(id);
 
 function showError(msg){
   const box = el("err");
+  if (!box) return;
   box.textContent = msg;
   box.classList.remove("hidden");
 }
 
 function clearError(){
   const box = el("err");
+  if (!box) return;
   box.textContent = "";
   box.classList.add("hidden");
 }
@@ -28,8 +30,13 @@ async function apiGet(url){
   return await r.json();
 }
 
-async function apiPost(url){
-  const r = await fetch(url, {method:"POST"});
+async function apiPost(url, body=null){
+  const opt = { method:"POST" };
+  if (body !== null){
+    opt.headers = {"Content-Type":"application/json"};
+    opt.body = JSON.stringify(body);
+  }
+  const r = await fetch(url, opt);
   if (!r.ok) {
     let txt = await r.text().catch(()=> "");
     throw new Error(`${r.status} ${r.statusText} :: ${txt}`);
@@ -49,8 +56,11 @@ function sma(arr, n){
 }
 
 function renderPositions(items){
+  const box = el("pos");
+  if (!box) return;
+
   if (!items || items.length === 0){
-    el("pos").innerHTML = `<div class="k">No positions</div>`;
+    box.innerHTML = `<div class="k">No positions</div>`;
     return;
   }
 
@@ -63,31 +73,44 @@ function renderPositions(items){
       </div>
     `;
   }
-  el("pos").innerHTML = html;
+  box.innerHTML = html;
 }
 
 function renderOrders(items){
+  const box = el("ord");
+  if (!box) return;
+
   if (!items || items.length === 0){
-    el("ord").innerHTML = `<div class="k">No orders</div>`;
+    box.innerHTML = `<div class="k">No orders</div>`;
     return;
   }
 
   let html = "";
-  for (const o of items.slice(0, 20)){
-    html += `
-      <div class="row">
-        <div class="k">#${o.id} ${o.symbol} ${o.side.toUpperCase()} x${o.qty}</div>
-        <div class="v">${o.price}</div>
-      </div>
-    `;
+  for (const o of items.slice(0, 30)){
+    if (o.type === "deposit" || o.type === "withdraw"){
+      html += `
+        <div class="row">
+          <div class="k">#${o.id} ${o.type.toUpperCase()}</div>
+          <div class="v">${money(o.amount)}</div>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="row">
+          <div class="k">#${o.id} ${o.symbol} ${o.side.toUpperCase()} x${o.qty}</div>
+          <div class="v">${o.price}</div>
+        </div>
+      `;
+    }
   }
-  el("ord").innerHTML = html;
+  box.innerHTML = html;
 }
 
 async function refreshSide(){
   const acc = await apiGet("/api/account");
-  el("cash").textContent = money(acc.cash);
-  el("eq").textContent = money(acc.equity);
+  if (el("cash")) el("cash").textContent = money(acc.cash);
+  if (el("eq")) el("eq").textContent = money(acc.equity);
+  if (el("mode")) el("mode").textContent = (acc.mode || "—").toUpperCase();
 
   const pos = await apiGet("/api/positions");
   renderPositions(pos);
@@ -114,7 +137,6 @@ function buildPlot(bars, symbol){
     name: symbol,
     increasing: {line:{color:"#22c55e"}},
     decreasing: {line:{color:"#ef4444"}},
-    hoverlabel: {font:{color:"#071529"}}
   };
 
   const vol = {
@@ -130,22 +152,18 @@ function buildPlot(bars, symbol){
   const traces = [candle, vol];
 
   if (showMA){
-    const ma20 = sma(c, 20);
-    const ma50 = sma(c, 50);
-
     traces.push({
       type: "scatter",
       x: t,
-      y: ma20,
+      y: sma(c, 20),
       mode: "lines",
       name: "MA20",
       line: {width: 1.5, color:"#60a5fa"}
     });
-
     traces.push({
       type: "scatter",
       x: t,
-      y: ma50,
+      y: sma(c, 50),
       mode: "lines",
       name: "MA50",
       line: {width: 1.5, color:"#f59e0b"}
@@ -187,27 +205,23 @@ function buildPlot(bars, symbol){
     responsive: true,
     displaylogo: false,
     scrollZoom: true,
-    modeBarButtonsToAdd: [
-      "drawline",
-      "drawopenpath",
-      "drawrect",
-      "drawcircle",
-      "eraseshape"
-    ],
-    modeBarButtonsToRemove: ["lasso2d", "select2d"]
+    modeBarButtonsToAdd: ["drawline","drawopenpath","drawrect","drawcircle","eraseshape"],
+    modeBarButtonsToRemove: ["lasso2d","select2d"]
   };
 
   Plotly.newPlot("chart", traces, layout, config);
 }
 
 async function loadChart(){
+  if (!el("chart")) return;
+
   clearError();
 
   const sym = el("sym").value.trim().toUpperCase();
   const tf = el("tf").value;
   const lim = el("lim").value;
 
-  el("title").textContent = `Chart: ${sym} (${tf})`;
+  if (el("title")) el("title").textContent = `Chart: ${sym} (${tf})`;
 
   const url = `/api/bars?symbol=${encodeURIComponent(sym)}&timeframe=${encodeURIComponent(tf)}&limit=${encodeURIComponent(lim)}`;
   const data = await apiGet(url);
@@ -222,9 +236,10 @@ async function loadChart(){
 
 async function placeOrder(side){
   clearError();
-  const sym = el("sym").value.trim().toUpperCase();
-  const url = `/api/order?symbol=${encodeURIComponent(sym)}&qty=1&side=${encodeURIComponent(side)}`;
-  await apiPost(url);
+  const symEl = el("sym");
+  if (!symEl) return;
+  const sym = symEl.value.trim().toUpperCase();
+  await apiPost(`/api/order?symbol=${encodeURIComponent(sym)}&qty=1&side=${encodeURIComponent(side)}`);
   await refreshSide();
 }
 
@@ -234,7 +249,188 @@ async function resetAll(){
   await refreshSide();
 }
 
-function wire(){
+async function setMode(mode){
+  clearError();
+  await apiPost(`/api/mode?mode=${encodeURIComponent(mode)}`);
+  await refreshSide();
+}
+
+function menuInit(){
+  const btn = el("btnAccount");
+  const menu = el("accountMenu");
+  if (!btn || !menu) return;
+
+  menu.style.position = "fixed";
+  menu.style.zIndex = "1000001";
+  menu.style.display = "none";
+
+  const pad = 12;
+
+  function openMenu(){
+    const r = btn.getBoundingClientRect();
+
+    menu.style.display = "block";
+    menu.classList.remove("hidden");
+    menu.hidden = false;
+    menu.removeAttribute("hidden");
+
+    const mw = menu.offsetWidth || 220;
+    const mh = menu.offsetHeight || 200;
+
+    let left = r.right - mw;
+
+    if (left < pad) left = pad;
+    if (left + mw > window.innerWidth - pad) left = window.innerWidth - pad - mw;
+
+    let top = r.bottom + 8;
+
+    if (top + mh > window.innerHeight - pad) {
+      top = Math.max(pad, r.top - mh - 8);
+    }
+
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+  }
+
+  function closeMenu(){
+    menu.style.display = "none";
+    menu.classList.add("hidden");
+  }
+
+  function isOpen(){
+    return menu.style.display === "block";
+  }
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOpen()) closeMenu();
+    else openMenu();
+  });
+
+  menu.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  document.addEventListener("click", () => {
+    closeMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+
+  window.addEventListener("resize", () => {
+    if (isOpen()) openMenu();
+  });
+
+  window.addEventListener("scroll", () => {
+    if (isOpen()) openMenu();
+  }, true);
+}
+
+
+
+function profileInit(){
+  const u = el("username");
+  const save = el("saveUser");
+  if (!u || !save) return;
+
+  save.addEventListener("click", async ()=>{
+    try{
+      clearError();
+      const name = u.value.trim();
+      await apiPost(`/api/profile?username=${encodeURIComponent(name)}`);
+      await refreshSide();
+    } catch(e){ showError(e.message); }
+  });
+
+  const sd = el("switchDemo");
+  const sr = el("switchReal");
+  if (sd) sd.addEventListener("click", async()=>{ try{ await setMode("demo"); }catch(e){ showError(e.message);} });
+  if (sr) sr.addEventListener("click", async()=>{ try{ await setMode("real"); }catch(e){ showError(e.message);} });
+}
+
+function luhnOk(num){
+  const s = (num||"").replace(/\D/g,"");
+  let total = 0;
+  const rev = s.split("").reverse();
+  for (let i=0;i<rev.length;i++){
+    let d = rev[i].charCodeAt(0) - 48;
+    if (i % 2 === 1){
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    total += d;
+  }
+  return (total % 10) === 0;
+}
+
+function genFakeInvalidCard(){
+  let base = "9999";
+  for (let i=0;i<11;i++){
+    base += Math.floor(Math.random()*10).toString();
+  }
+
+  let last = Math.floor(Math.random()*10);
+  let num = base + last.toString();
+
+  if (luhnOk(num)){
+    last = (last + 5) % 10;
+    num = base + last.toString();
+  }
+
+  return num.replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+function fundingInit(){
+  const gen = el("genCard");
+  const dep = el("doDeposit");
+  const wd = el("doWithdraw");
+
+  if (gen && el("ccNum")){
+    gen.addEventListener("click", ()=>{
+      el("ccNum").value = genFakeInvalidCard();
+    });
+  }
+
+  if (dep){
+    dep.addEventListener("click", async ()=>{
+      try{
+        clearError();
+        const body = {
+          amount: Number(el("depAmount").value),
+          name: el("ccName").value,
+          number: el("ccNum").value,
+          exp: el("ccExp").value,
+          cvc: el("ccCvc").value,
+        };
+        await apiPost("/api/deposit", body);
+        await refreshSide();
+      } catch(e){ showError(e.message); }
+    });
+  }
+
+  if (wd){
+    wd.addEventListener("click", async ()=>{
+      try{
+        clearError();
+        const a = Number(el("wdAmount").value);
+        await apiPost(`/api/withdraw?amount=${encodeURIComponent(a)}`);
+        await refreshSide();
+      } catch(e){ showError(e.message); }
+    });
+  }
+
+  const sd = el("switchDemo");
+  const sr = el("switchReal");
+  if (sd) sd.addEventListener("click", async()=>{ try{ await setMode("demo"); }catch(e){ showError(e.message);} });
+  if (sr) sr.addEventListener("click", async()=>{ try{ await setMode("real"); }catch(e){ showError(e.message);} });
+}
+
+function chartInit(){
+  if (!el("btnLoad")) return;
+
   el("btnLoad").addEventListener("click", async () => {
     try{
       await loadChart();
@@ -269,11 +465,24 @@ function wire(){
       }catch(e){ showError(e.message); }
     }
   });
+
+  const toDemo = el("toDemo");
+  const toReal = el("toReal");
+  if (toDemo) toDemo.addEventListener("click", async ()=>{ try{ await setMode("demo"); }catch(e){ showError(e.message);} });
+  if (toReal) toReal.addEventListener("click", async ()=>{ try{ await setMode("real"); }catch(e){ showError(e.message);} });
 }
 
 (async function init(){
-  wire();
+  menuInit();
+  chartInit();
+  profileInit();
+  fundingInit();
+
   try{
+    if (el("username")){
+      const p = await apiGet("/api/profile");
+      el("username").value = p.username || "Trader";
+    }
     await refreshSide();
     await loadChart();
   }catch(e){

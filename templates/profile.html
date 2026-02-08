@@ -2,7 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Profile</title>
+    <title>Profile</title>  
+    <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile</title>
+
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/app.js" defer></script>
 </head>
 <body style="background:#0f172a; color:white; font-family:Arial;">
 
@@ -13,5 +19,68 @@
 
 <a href="/logout">Leave</a>
 
+  <div class="topbar">
+    <a class="brand" href="/">STOCKING</a>
+
+    <div class="controls">
+      <a class="btn ghost" href="/">Back to Chart</a>
+      <a class="btn primary" href="/funding">Deposit / Withdraw</a>
+    </div>
+
+    <div class="rightinfo">
+      <div class="mini">
+        <div class="miniLabel">Mode</div>
+        <div id="mode" class="miniVal">—</div>
+      </div>
+      <div class="mini">
+        <div class="miniLabel">Cash</div>
+        <div id="cash" class="miniVal">—</div>
+      </div>
+      <div class="mini">
+        <div class="miniLabel">Equity</div>
+        <div id="eq" class="miniVal">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout onecol">
+    <div class="main">
+      <div class="card">
+        <div class="cardTitle">Account Profile</div>
+
+        <div class="formGrid">
+          <div>
+            <div class="k">Username</div>
+            <input id="username" class="input w100" placeholder="Trader" />
+          </div>
+
+          <div>
+            <div class="k">Actions</div>
+            <div class="rowBtns">
+              <button id="saveUser" class="btn primary">Save</button>
+              <button id="switchDemo" class="btn">Switch DEMO</button>
+              <button id="switchReal" class="btn">Switch REAL</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="note">
+          Тут нет реальных данных. Не вводи личную инфу.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">Positions</div>
+        <div id="pos" class="table"></div>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">Orders</div>
+        <div id="ord" class="table"></div>
+      </div>
+
+      <div id="err" class="error hidden"></div>
+    </div>
+  </div>
 </body>
 </html>
