@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="/static/app.js?v=999" defer></script>
+  <script src="/static/profile.js" defer></script>
+
 
 </head>
 
@@ -45,6 +47,7 @@
       <button id="btnLoad" class="btn primary">Load</button>
       <button id="btnMA" class="btn">MA 20/50</button>
       <button id="btnTrade" class="btn primary">Trade</button>
+      <button id="btnSupport" class="btn primary">Support</button>
     </div>
 
     <div class="rightinfo">
@@ -183,6 +186,16 @@
     <div id="consentErr" class="consent-error" style="display:none;"></div>
   </div>
 </div>
-
+<div id="supportModal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Support</h2>
+    <form id="supportForm">
+      <input type="text" name="subject" placeholder="Тема" required>
+      <textarea name="message" placeholder="Опишите вашу проблему..." required></textarea>
+      <button type="submit">Отправить</button>
+      <button type="button" onclick="closeSupport()">Отмена</button>
+    </form>
+  </div>
+</div>
 </body>
 </html>

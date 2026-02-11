@@ -7,8 +7,10 @@
 
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/profile.js" defer></script>
+    <script src="/static/app.js" defer></script>
 </head>
 <body style="background:#0f172a; color:white; font-family:Arial;">
+
   <div class="topbar">
     <a class="brand" href="/">STOCKING</a>
 
@@ -45,7 +47,7 @@
           <p><b>Username:</b> {{ username }}</p>
           <p><b>Email:</b> {{ email }}</p>
         </div>
-        <img src="/static/LOGO1.png" alt="Profile photo">
+        <img src="/static/LOGO2.png" alt="Profile photo">
 
         <div>
           <div class="k">Actions</div>
@@ -76,8 +78,8 @@
     <div class="modal-content">
       <h2>Support</h2>
       <form id="supportForm">
-        <input type="text" name="subject" placeholder="Subject" required>
-        <textarea name="message" placeholder="Describe your problem..." required></textarea>
+        <input type="text" name="subject" placeholder="Тема" required>
+        <textarea name="message" placeholder="Опишите вашу проблему..." required></textarea>
         <button type="submit">Send</button>
         <button type="button" onclick="closeSupport()">Cancel</button>
       </form>
