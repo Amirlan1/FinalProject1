@@ -22,10 +22,6 @@
             font-size: 36px;
         }
 
-        .buttons {
-            margin-top: 25px;
-        }
-
         .buttons a {
             text-decoration: none;
             padding: 12px 25px;
@@ -61,57 +57,148 @@
             padding: 10px 0;
             border-bottom: 1px solid #1e293b;
         }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .modal-content input, .modal-content textarea, .modal-content button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+        }
+
+        .modal-content textarea {
+            resize: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .footer button {
+            background: #2563eb;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
+    <script>
+        function openSupport() {
+            document.getElementById('supportModal').classList.remove('hidden');
+        }
+
+        function closeSupport() {
+            document.getElementById('supportModal').classList.add('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('supportForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(form);
+                try {
+                    const response = await fetch("/api/support", {
+                        method: "POST",
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        alert(data.message || "Support request sent!");
+                        form.reset();
+                        closeSupport();
+                    } else {
+                        alert(data.detail || "Error sending support request");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Failed to send support request");
+                }
+            });
+        });
+    </script>
 </head>
 <body>
 
 <header>
-    <h1>Добро пожаловать на Stocking Market </h1>
-    <p></p>
-
+    <h1>Добро пожаловать на Stocking Market</h1>
     <div class="buttons">
         <a href="/register">Регистрация</a>
         <a href="/login">Вход</a>
-</div>
+    </div>
 </header>
 
 <div class="container">
     <div class="news">
         <h2>Основные новости</h2>
         <ul>
-<div class="card">
-  <div class="cardTitle">Market News</div>
-
-  {% for article in news %}
-    <div style="margin-bottom:20px; padding:15px; background:#1e293b; border-radius:10px; display:flex; gap:15px;">
-
-      {% if article.image %}
-        <img src="{{ article.image }}"
-             style="width:150px; height:100px; object-fit:cover; border-radius:8px;">
-      {% endif %}
-
-      <div>
-        <h3 style="margin:0;">
-          <a href="{{ article.url }}" target="_blank"
-             style="color:#38bdf8; text-decoration:none;">
-            {{ article.headline }}
-          </a>
-        </h3>
-
-        <p style="font-size:13px; color:#94a3b8; margin:5px 0;">
-          Source: {{ article.source }}
-        </p>
-
-        <p style="font-size:14px; margin:0;">
-          {{ article.summary }}
-        </p>
-      </div>
-
+            <div class="card">
+                <div class="cardTitle">Market News</div>
+                {% for article in news %}
+                <div style="margin-bottom:20px; padding:15px; background:#1e293b; border-radius:10px; display:flex; gap:15px;">
+                    {% if article.image %}
+                    <img src="{{ article.image }}" style="width:150px; height:100px; object-fit:cover; border-radius:8px;">
+                    {% endif %}
+                    <div>
+                        <h3 style="margin:0;">
+                            <a href="{{ article.url }}" target="_blank" style="color:#38bdf8; text-decoration:none;">
+                                {{ article.headline }}
+                            </a>
+                        </h3>
+                        <p style="font-size:13px; color:#94a3b8; margin:5px 0;">
+                            Source: {{ article.source }}
+                        </p>
+                        <p style="font-size:14px; margin:0;">
+                            {{ article.summary }}
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </ul>
     </div>
-  {% endfor %}
 </div>
 
-        </ul>
+<div class="footer">
+    <button onclick="openSupport()">Support</button>
+</div>
+
+<div id="supportModal" class="modal hidden">
+    <div class="modal-content">
+        <h2>Support</h2>
+        <form id="supportForm">
+            <input type="text" name="subject" placeholder="Тема" required>
+            <textarea name="message" placeholder="Опишите вашу проблему..." required></textarea>
+            <button type="submit">Send</button>
+            <button type="button" onclick="closeSupport()">Cancel</button>
+        </form>
     </div>
 </div>
 
