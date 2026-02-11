@@ -268,7 +268,25 @@ def api_consent_accept(request: Request):
 
     return {"ok": True, "privacyAccepted": True, "privacyVersion": PRIVACY_VERSION}
 
+
 @app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    user = get_current_user(request)
+    try:
+        resp = requests.get(url, timeout=10)
+        news = resp.json()
+    except:
+        news = []
+    news = news[:10]
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "user": user,  
+        "news": news
+    })
+
+
+@app.get("/workspace", response_class=HTMLResponse)
 async def home(request: Request):
     user = get_current_user(request)
     if not user:
@@ -377,7 +395,7 @@ def post_login(
             "error": "Wrong password"
         })
 
-    response = RedirectResponse("/", status_code=302)
+    response = RedirectResponse("/workspace", status_code=302)
     response.set_cookie(key="user_id", value=str(user_id))
     return response
 
