@@ -5,40 +5,42 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 import sqlite3
 from pathlib import Path
+from dotenv import load_dotenv
+from passlib.context import CryptContext
+from fastapi import HTTPException
 
-# Path to database
 BASE_DIR = Path(__file__).resolve().parent
 db_folder = BASE_DIR / "db"
 db_path = db_folder / "users.db"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-MAX_BCRYPT_LEN = 72
 
+pwd_context = CryptContext(
+    schemes=["argon2"],  
+    deprecated="auto"
+)
 
 def hash_password(password: str) -> str:
-    truncated = password[:MAX_BCRYPT_LEN]
-    return pwd_context.hash(truncated)
-
+    return pwd_context.hash(password) 
 
 def verify_password(password: str, hashed: str) -> bool:
-    truncated = password[:MAX_BCRYPT_LEN]
-    return pwd_context.verify(truncated, hashed)
+    try:
+        return pwd_context.verify(password, hashed)
+    except Exception:
+        return False
 
-
-# Gmail configuration
-# You can override these with environment variables
 import os
+load_dotenv()
 
-MAIL_USERNAME = os.getenv("MAIL_USERNAME", "stockingrep00@gmail.com")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "lexj pnzu mnbm oatw")
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 MAIL_FROM = os.getenv("MAIL_FROM", "StockingRep <stockingrep00@gmail.com>")
 MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
 MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
 RESET_URL = os.getenv("RESET_PASSWORD_URL", "http://localhost:8000/reset-password")
 
 conf = ConnectionConfig(
-    MAIL_USERNAME=MAIL_USERNAME,
-    MAIL_PASSWORD=MAIL_PASSWORD, 
+    MAIL_USERNAME=EMAIL_USER,
+    MAIL_PASSWORD=EMAIL_PASSWORD, 
     MAIL_FROM=MAIL_FROM,
     MAIL_PORT=MAIL_PORT,
     MAIL_SERVER=MAIL_SERVER,
@@ -69,6 +71,21 @@ If you did not request this, please ignore this email.
 
 Best regards,
 StockingRep Team
+
+
+Здравствуйте,
+
+Вы просили сбросить ваш пароль для StockingRep.
+
+Пожалуйста, перейдите по ссылке ниже, чтобы сбросить пароль:
+{link}
+
+Срок действия этой ссылки истечет через 1 час.
+
+Если вы не запрашивали это, пожалуйста, проигнорируйте это электронное письмо.
+
+С наилучшими пожеланиями,
+команда StockingRep
         """,
         subtype="plain"
     )
@@ -77,21 +94,18 @@ StockingRep Team
 
 
 def generate_reset_token():
-    """Generate unique reset token with expiration"""
     token = str(uuid.uuid4())
     expires_at = datetime.utcnow() + timedelta(hours=1)
     return token, expires_at
 
 
 def get_db():
-    """Get database connection"""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 async def forgot_password(email: str):
-    """Handle forgot password request"""
     conn = get_db()
     cursor = conn.cursor()
     
@@ -120,7 +134,6 @@ async def forgot_password(email: str):
 
 
 async def reset_password(token: str, new_password: str):
-    """Reset password using token"""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT user_id, expires_at FROM password_resets WHERE token=?", (token,))
