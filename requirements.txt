@@ -7,4 +7,6 @@ jinja2
 python-multipart
 argon2-cffi
 auth
-fastapi_mai
+fastapi_mail
+deep_translator
+passlib[argon2]
