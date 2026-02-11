@@ -1,30 +1,21 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Profile</title>  
-    <meta charset="UTF-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Profile</title>
-
+  <title>Profile - Stocking</title>
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="/static/app.js" defer></script>
 </head>
-<body style="background:#0f172a; color:white; font-family:Arial;">
-
-<h1>User Profile</h1>
-
-<p><b>Имя:</b> {{ username }}</p>
-<p><b>Email:</b> {{ email }}</p>
-
-<a href="/logout">Leave</a>
-
+<body>
   <div class="topbar">
     <a class="brand" href="/">STOCKING</a>
 
     <div class="controls">
-      <a class="btn ghost" href="/">Back to Chart</a>
-      <a class="btn primary" href="/funding">Deposit / Withdraw</a>
+      <a class="btn ghost" href="/">Chart</a>
+      <a class="btn ghost" href="/trading">Trading</a>
+      <a class="btn primary" href="/funding">Funding</a>
+      <a class="btn ghost" href="/logout">Logout</a>
     </div>
 
     <div class="rightinfo">
@@ -46,37 +37,57 @@
   <div class="layout onecol">
     <div class="main">
       <div class="card">
-        <div class="cardTitle">Account Profile</div>
+        <div class="cardTitle">User Account</div>
+        <div class="table">
+          <div class="row">
+            <div class="k">Username (DB)</div>
+            <div class="v">{{ username }}</div>
+          </div>
+          <div class="row">
+            <div class="k">Email</div>
+            <div class="v">{{ email }}</div>
+          </div>
+          <div class="row">
+            <div class="k">User ID</div>
+            <div class="v">#{{ user_id }}</div>
+          </div>
+        </div>
+        <div class="note">
+          Это ваши данные из системы авторизации. Для выхода используйте кнопку Logout.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">Trading Profile</div>
 
         <div class="formGrid">
           <div>
-            <div class="k">Username</div>
+            <div class="k">Trading Username</div>
             <input id="username" class="input w100" placeholder="Trader" />
           </div>
 
           <div>
             <div class="k">Actions</div>
             <div class="rowBtns">
-              <button id="saveUser" class="btn primary">Save</button>
-              <button id="btnResetProfile" class="btn ghost">Reset account</button>
-              <button id="switchDemo" class="btn">Switch DEMO</button>
-              <button id="switchReal" class="btn">Switch REAL</button>
+              <button id="saveUser" class="btn primary">Save Trading Name</button>
+              <button id="switchDemo" class="btn">Switch to DEMO</button>
+              <button id="switchReal" class="btn">Switch to REAL</button>
             </div>
           </div>
         </div>
 
         <div class="note">
-          Тут нет реальных данных. Не вводи личную инфу.
+          Trading username используется для торговой платформы. Это не влияет на ваш основной аккаунт.
         </div>
       </div>
 
       <div class="card">
-        <div class="cardTitle">Positions</div>
+        <div class="cardTitle">Current Positions</div>
         <div id="pos" class="table"></div>
       </div>
 
       <div class="card">
-        <div class="cardTitle">Orders</div>
+        <div class="cardTitle">Order History</div>
         <div id="ord" class="table"></div>
       </div>
 

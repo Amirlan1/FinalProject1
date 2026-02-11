@@ -1,47 +1,13 @@
 let showMA = false;
-let lastPositions = [];
 
 const el = (id) => document.getElementById(id);
 
 function showError(msg){
-  let box = el("err");
-
-  // если на странице нет #err — создаём плавающее уведомление
-  if (!box){
-    box = document.createElement("div");
-    box.id = "err";
-    box.className = "error toast";
-    document.body.appendChild(box);
-  }
-
+  const box = el("err");
+  if (!box) return;
+  box.textContent = msg;
   box.classList.remove("hidden");
-
-  box.innerHTML = "";
-  const row = document.createElement("div");
-  row.className = "errRow";
-
-  const text = document.createElement("div");
-  text.className = "errText";
-  text.textContent = msg;
-
-  const btn = document.createElement("button");
-  btn.className = "errClose";
-  btn.type = "button";
-  btn.textContent = "×";
-  btn.onclick = () => box.classList.add("hidden");
-
-  row.appendChild(text);
-  row.appendChild(btn);
-  box.appendChild(row);
-
-  if (box._t) clearTimeout(box._t);
-  box._t = setTimeout(() => box.classList.add("hidden"), 6000);
-
-  if (!box.classList.contains("toast")){
-    try{ box.scrollIntoView({behavior:"smooth", block:"nearest"}); }catch(_){}
-  }
 }
-
 
 function clearError(){
   const box = el("err");
@@ -55,48 +21,28 @@ function money(x){
   return "$" + Number(x).toFixed(2);
 }
 
-async function parseErr(r){
-  try{
-    const ct = (r.headers.get("content-type") || "").toLowerCase();
-
-    if (ct.includes("application/json")){
-      const j = await r.json();
-      if (j && typeof j === "object"){
-        return j.detail || j.message || j.error || JSON.stringify(j);
-      }
-      return String(j);
-    }
-
-    const t = await r.text();
-    return t || `${r.status} ${r.statusText}`;
-  }catch(_){
-    return `${r.status} ${r.statusText}`;
-  }
-}
-
 async function apiGet(url){
   const r = await fetch(url);
-  if (!r.ok){
-    const msg = await parseErr(r);
-    throw new Error(msg);
+  if (!r.ok) {
+    let txt = await r.text().catch(()=> "");
+    throw new Error(`${r.status} ${r.statusText} :: ${txt}`);
   }
   return await r.json();
 }
 
 async function apiPost(url, body=null){
-  const opt = { method: "POST" };
+  const opt = { method:"POST" };
   if (body !== null){
     opt.headers = {"Content-Type":"application/json"};
     opt.body = JSON.stringify(body);
   }
   const r = await fetch(url, opt);
-  if (!r.ok){
-    const msg = await parseErr(r);
-    throw new Error(msg);
+  if (!r.ok) {
+    let txt = await r.text().catch(()=> "");
+    throw new Error(`${r.status} ${r.statusText} :: ${txt}`);
   }
   return await r.json();
 }
-
 
 function sma(arr, n){
   const out = new Array(arr.length).fill(null);
@@ -167,12 +113,10 @@ async function refreshSide(){
   if (el("mode")) el("mode").textContent = (acc.mode || "—").toUpperCase();
 
   const pos = await apiGet("/api/positions");
-lastPositions = pos || [];
-renderPositions(pos);
+  renderPositions(pos);
 
   const ord = await apiGet("/api/orders");
   renderOrders(ord);
-  
 }
 
 function buildPlot(bars, symbol){
@@ -264,34 +208,6 @@ function buildPlot(bars, symbol){
     modeBarButtonsToAdd: ["drawline","drawopenpath","drawrect","drawcircle","eraseshape"],
     modeBarButtonsToRemove: ["lasso2d","select2d"]
   };
-  const p = (lastPositions || []).find(x => x.symbol === symbol);
-  if (p){
-    const entry = Number(p.entry_price);
-    const liq = Number(p.liq_price);
-
-    layout.shapes = layout.shapes || [];
-    layout.annotations = layout.annotations || [];
-
-    layout.shapes.push({
-      type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: entry, y1: entry,
-      line: {width: 2, dash: "dot", color: "#60a5fa"}
-    });
-    layout.annotations.push({
-      xref:"paper", x:1, xanchor:"left", yref:"y", y:entry,
-      text:`Entry ${p.side.toUpperCase()} @ ${entry}`,
-      showarrow:false, font:{size:12, color:"#dbeafe"}
-    });
-
-    layout.shapes.push({
-      type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: liq, y1: liq,
-      line: {width: 2, dash: "dash", color: "#f59e0b"}
-    });
-    layout.annotations.push({
-      xref:"paper", x:1, xanchor:"left", yref:"y", y:liq,
-      text:`Liq ~ ${liq} (${p.leverage}x)`,
-      showarrow:false, font:{size:12, color:"#fde68a"}
-    });
-  }
 
   Plotly.newPlot("chart", traces, layout, config);
 }
@@ -348,21 +264,26 @@ function menuInit(){
   menu.style.zIndex = "1000001";
   menu.style.display = "none";
 
+  const pad = 12;
+
   function openMenu(){
     const r = btn.getBoundingClientRect();
-    const pad = 12;
 
     menu.style.display = "block";
     menu.classList.remove("hidden");
+    menu.hidden = false;
+    menu.removeAttribute("hidden");
 
     const mw = menu.offsetWidth || 220;
     const mh = menu.offsetHeight || 200;
 
     let left = r.right - mw;
+
     if (left < pad) left = pad;
     if (left + mw > window.innerWidth - pad) left = window.innerWidth - pad - mw;
 
     let top = r.bottom + 8;
+
     if (top + mh > window.innerHeight - pad) {
       top = Math.max(pad, r.top - mh - 8);
     }
@@ -387,33 +308,13 @@ function menuInit(){
     else openMenu();
   });
 
-  menu.addEventListener("click", (e) => e.stopPropagation());
-
-
-  const toDemo = el("toDemo");
-  const toReal = el("toReal");
-
-  if (toDemo) toDemo.addEventListener("click", async (e)=>{
-    e.preventDefault();
+  menu.addEventListener("click", (e) => {
     e.stopPropagation();
-    try{
-      await setMode("demo");
-      closeMenu();
-    }catch(err){ showError(err.message); }
   });
 
-  if (toReal) toReal.addEventListener("click", async (e)=>{
-    e.preventDefault();
-    e.stopPropagation();
-    try{
-      await setMode("real");
-      closeMenu();
-    }catch(err){ showError(err.message); }
+  document.addEventListener("click", () => {
+    closeMenu();
   });
-
- 
-  document.addEventListener("click", () => closeMenu());
-
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMenu();
@@ -422,8 +323,11 @@ function menuInit(){
   window.addEventListener("resize", () => {
     if (isOpen()) openMenu();
   });
-}
 
+  window.addEventListener("scroll", () => {
+    if (isOpen()) openMenu();
+  }, true);
+}
 
 
 
@@ -431,15 +335,6 @@ function profileInit(){
   const u = el("username");
   const save = el("saveUser");
   if (!u || !save) return;
-
-  const rp = el("btnResetProfile");
-if (rp) rp.addEventListener("click", async ()=>{
-  try{
-    clearError();
-    await apiPost("/api/reset");
-    await refreshSide();
-  }catch(e){ showError(e.message); }
-});
 
   save.addEventListener("click", async ()=>{
     try{
@@ -558,11 +453,9 @@ function chartInit(){
     try{ await placeOrder("sell"); }catch(e){ showError(e.message); }
   });
 
-  const r = el("btnReset");
-if (r) r.addEventListener("click", async () => {
-  try{ await resetAll(); }catch(e){ showError(e.message); }
-});
-
+  el("btnReset").addEventListener("click", async () => {
+    try{ await resetAll(); }catch(e){ showError(e.message); }
+  });
 
   el("sym").addEventListener("keydown", async (ev) => {
     if (ev.key === "Enter"){
@@ -579,115 +472,20 @@ if (r) r.addEventListener("click", async () => {
   if (toReal) toReal.addEventListener("click", async ()=>{ try{ await setMode("real"); }catch(e){ showError(e.message);} });
 }
 
-async function tradeInit(){
-  const btn = el("btnTrade");
-  const modal = el("tradeModal");
-  if (!btn || !modal) return;
-
-  const x = el("tmX");
-  const tmOpen = el("tmOpen");
-  const tmClose = el("tmClosePos");
-
-  function openModal(){
-    const sym = (el("sym")?.value || "AAPL").trim().toUpperCase();
-    if (el("tmSym")) el("tmSym").textContent = sym;
-    modal.classList.remove("hidden");
-  }
-
-  function closeModal(){
-    modal.classList.add("hidden");
-  }
-
-  
-  btn.addEventListener("click", async (e)=>{
-    e.preventDefault();
-    try{
-      clearError();
-      await refreshSide(); 
-      openModal();
-    }catch(err){ showError(err.message); }
-  });
-
-
-  if (x) x.addEventListener("click", (e)=>{
-    e.preventDefault();
-    closeModal();
-  });
-
- 
-  modal.addEventListener("click", (e)=>{
-    if (e.target === modal) closeModal();
-  });
-
-
-  document.addEventListener("keydown", (e)=>{
-    if (e.key === "Escape") closeModal();
-  });
-
-
-  if (tmOpen) tmOpen.addEventListener("click", async (e)=>{
-    e.preventDefault();
-    try{
-      clearError();
-      const sym = el("tmSym").textContent.trim().toUpperCase();
-      const qty = Number(el("tmQty").value);
-      const lev = Number(el("tmLev").value);
-      const side = el("tmSide").value;
-
-      await apiPost("/api/trade", { symbol: sym, action:"open", side: side, qty: qty, leverage: lev });
-      await refreshSide();
-      await loadChart();
-      closeModal(); 
-    }catch(err){ showError(err.message); }
-  });
-
-
-  if (tmClose) tmClose.addEventListener("click", async (e)=>{
-    e.preventDefault();
-    try{
-      clearError();
-      const sym = el("tmSym").textContent.trim().toUpperCase();
-      const qty = Number(el("tmQty").value);
-
-      await apiPost("/api/trade", { symbol: sym, action:"close", qty: qty });
-      await refreshSide();
-      await loadChart();
-      closeModal(); 
-    }catch(err){ showError(err.message); }
-  });
-}
-
-
-let __bootDone = false;
-let __autoBusy = false;
-
-async function autoLoad(){
-  if (__autoBusy) return;
-  __autoBusy = true;
+(async function init(){
+  menuInit();
+  chartInit();
+  profileInit();
+  fundingInit();
 
   try{
-    await refreshSide(); 
-    await loadChart();   
+    if (el("username")){
+      const p = await apiGet("/api/profile");
+      el("username").value = p.username || "Trader";
+    }
+    await refreshSide();
+    await loadChart();
   }catch(e){
-    console.error(e);
     showError(e.message);
-  }finally{
-    __autoBusy = false;
   }
-}
-
-function boot(){
-  if (__bootDone) return;
-  __bootDone = true;
-
-  try { menuInit(); } catch(e){ console.error(e); }
-  try { chartInit(); } catch(e){ console.error(e); }
-  try { profileInit(); } catch(e){ console.error(e); }
-  try { fundingInit(); } catch(e){ console.error(e); }
-  try { tradeInit(); } catch(e){ console.error(e); }
-
-  setTimeout(autoLoad, 50);
-  setTimeout(autoLoad, 1200);
-}
-
-window.addEventListener("load", boot);
+})();
