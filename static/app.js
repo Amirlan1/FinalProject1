@@ -5,8 +5,6 @@ const el = (id) => document.getElementById(id);
 
 function showError(msg){
   let box = el("err");
-
-  // если на странице нет #err — создаём плавающее уведомление
   if (!box){
     box = document.createElement("div");
     box.id = "err";
@@ -688,6 +686,8 @@ function boot(){
 
   setTimeout(autoLoad, 50);
   setTimeout(autoLoad, 1200);
+  setInterval(autoLoad, 5000);
+
 }
 
 window.addEventListener("load", boot);
