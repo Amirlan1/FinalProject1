@@ -223,19 +223,17 @@ def get_current_user(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     user = get_current_user(request)
-    if not user:
-        return RedirectResponse("/login")
-    
     try:
-        return templates.TemplateResponse("stock.html", {"request": request})
+        resp = requests.get(url, timeout=10)
+        news = resp.json()
     except:
-        ticker = "AAPL"
-        stock_data, err = await get_stock_data(ticker)
-        chart_data = {
-            "labels": [str(item['Date']).split()[0] for item in stock_data],
-            "data": [item['Close'] for item in stock_data]}
-    
-
+        news = []
+    news = news[:10]
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "user": user,
+        "news": news
+    })
 
 
 
