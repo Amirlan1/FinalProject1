@@ -214,9 +214,11 @@ def get_current_user(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login")
+    
     try:
-        resp = requests.get(url, timeout=10)
-        news = resp.json()
+        return templates.TemplateResponse("stock.html", {"request": request})
     except:
         ticker = "AAPL"
         stock_data, err = await get_stock_data(ticker)
@@ -402,11 +404,6 @@ async def reset_password_submit(request: Request, token: str = Form(...), new_pa
 @app.get("/favicon.ico")
 def favicon():
     return Response(status_code=204)
-
-
-
-
-
 
 
 @app.get("/api/health")
