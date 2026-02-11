@@ -19,6 +19,9 @@ import time
 import threading
 import requests
 import pandas as pd
+import aiosmtplib
+from support import send_support_email
+
 
 api_key = "d668impr01qots73m1e0d668impr01qots73m1eg" 
 url = f"https://finnhub.io/api/v1/news?category=general&token={api_key}"
@@ -856,6 +859,13 @@ def api_withdraw(request: Request, amount: float = Query(..., gt=0, le=1_000_000
 
         return {"ok": True, "cash": round(float(acc["cash"]), 2)}
 
+
+@app.post("/api/support")
+async def support(request: Request, subject: str = Form(...), message: str = Form(...)):
+    user = require_login(request)
+    user_id, username, email, _, _ = user
+    await send_support_email(email, username, subject, message)
+    return {"ok": True, "message": "Support request sent successfully"}
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

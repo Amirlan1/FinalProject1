@@ -2,19 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Profile</title>  
-    <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Profile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profile</title>
 
-  <link rel="stylesheet" href="/static/styles.css" />
-  <script src="/static/app.js" defer></script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/profile.js" defer></script>
 </head>
 <body style="background:#0f172a; color:white; font-family:Arial;">
-
-
-
-
   <div class="topbar">
     <a class="brand" href="/">STOCKING</a>
 
@@ -42,26 +36,25 @@
 
   <div class="layout onecol">
     <div class="main">
+
       <div class="card">
         <div class="cardTitle">Account Profile</div>
-        <div class="k"><p><b>Username:</b> {{ username }}</p>
-                <p><b>Email:</b> {{ email }}</p></div>
-                    <img src="/static/LOGO1.png" alt="Profile photo">
+        <div class="k">
+          <p><b>Username:</b> {{ username }}</p>
+          <p><b>Email:</b> {{ email }}</p>
+        </div>
+        <img src="/static/LOGO1.png" alt="Profile photo">
 
-        
-
-          <div>
-            <div class="k">Actions</div>
-            <div class="rowBtns">
-              <button id="btnResetProfile" class="btn ghost">Reset account</button>
-              <button id="switchDemo" class="btn">Switch DEMO</button>
-              <button id="switchReal" class="btn">Switch REAL</button>
-            </div>
+        <div>
+          <div class="k">Actions</div>
+          <div class="rowBtns">
+            <button id="btnResetProfile" class="btn ghost">Reset account</button>
+            <button id="switchDemo" class="btn">Switch DEMO</button>
+            <button id="switchReal" class="btn">Switch REAL</button>
+            <button id="btnSupport" class="btn ghost">Support</button>
           </div>
         </div>
-
-               
-
+      </div>
 
       <div class="card">
         <div class="cardTitle">Positions</div>
@@ -76,5 +69,18 @@
       <div id="err" class="error hidden"></div>
     </div>
   </div>
+
+  <div id="supportModal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Support</h2>
+      <form id="supportForm">
+        <input type="text" name="subject" placeholder="Subject" required>
+        <textarea name="message" placeholder="Describe your problem..." required></textarea>
+        <button type="submit">Send</button>
+        <button type="button" onclick="closeSupport()">Cancel</button>
+      </form>
+    </div>
+  </div>
+
 </body>
 </html>

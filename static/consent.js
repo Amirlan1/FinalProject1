@@ -45,3 +45,4 @@ async function consentInit(){
 }
 
 document.addEventListener("DOMContentLoaded", consentInit);
+

@@ -687,7 +687,6 @@ function boot(){
   setTimeout(autoLoad, 50);
   setTimeout(autoLoad, 1200);
   setInterval(autoLoad, 5000);
-
 }
 
 window.addEventListener("load", boot);

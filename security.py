@@ -8,6 +8,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from passlib.context import CryptContext
 from fastapi import HTTPException
+import aiosmtplib
+from email.message import EmailMessage
 
 BASE_DIR = Path(__file__).resolve().parent
 db_folder = BASE_DIR / "db"
