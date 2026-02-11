@@ -19,16 +19,7 @@ import time
 import threading
 import requests
 import pandas as pd
-from deep_translator import GoogleTranslator
-from dotenv import load_dotenv
 
-load_dotenv()
-api_key = "d668impr01qots73m1e0d668impr01qots73m1eg" 
-url = f"https://finnhub.io/api/v1/news?category=general&token={api_key}"
-
-
-response = requests.get(url)
-news = response.json()
 BASE_DIR = Path(__file__).resolve().parent
 db_folder = BASE_DIR / "db"
 db_path = db_folder / "users.db"
@@ -227,15 +218,38 @@ async def home(request: Request):
         resp = requests.get(url, timeout=10)
         news = resp.json()
     except:
-        news = []
-    news = news[:10]
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "user": user,
-        "news": news
-    })
+        ticker = "AAPL"
+        stock_data, err = await get_stock_data(ticker)
+        chart_data = {
+            "labels": [str(item['Date']).split()[0] for item in stock_data],
+            "data": [item['Close'] for item in stock_data]
+        }
+        return templates.TemplateResponse("index.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
 
 
+@app.get("/gra", response_class=HTMLResponse)
+async def graphic(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login")
+    
+    ticker = "AAPL"
+    stock_data, err = await get_stock_data(ticker)
+    chart_data = {
+        "labels": [str(item['Date']).split()[0] for item in stock_data],
+        "data": [item['Close'] for item in stock_data]
+    }
+    return templates.TemplateResponse("graphic.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
+
+
+@app.post("/update_graph/")
+async def update_graph(request: Request, ticker: str = Form(...)):
+    stock_data = await get_stock_data(ticker)
+    chart_data = {
+        "labels": [str(item['Date']).split()[0] for item in stock_data],
+        "data": [item['Close'] for item in stock_data]
+    }
+    return templates.TemplateResponse("index.html", {"request": request, "chart_data": chart_data, "ticker": ticker})
 
 
 @app.get("/register")
