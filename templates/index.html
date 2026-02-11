@@ -66,7 +66,7 @@
 <body>
 
 <header>
-    <h1>Добро пожаловать на </h1>
+    <h1>Добро пожаловать на Stocking Market</h1>
     <p></p>
 
     <div class="buttons">
@@ -79,12 +79,42 @@
     <div class="news">
         <h2>Основные новости</h2>
         <ul>
-            {% for item in news %}
-                <li>{{ item }}</li>
-            {% endfor %}
+<div class="card">
+  <div class="cardTitle">Market News</div>
+
+  {% for article in news %}
+    <div style="margin-bottom:20px; padding:15px; background:#1e293b; border-radius:10px; display:flex; gap:15px;">
+
+      {% if article.image %}
+        <img src="{{ article.image }}"
+             style="width:150px; height:100px; object-fit:cover; border-radius:8px;">
+      {% endif %}
+
+      <div>
+        <h3 style="margin:0;">
+          <a href="{{ article.url }}" target="_blank"
+             style="color:#38bdf8; text-decoration:none;">
+            {{ article.headline }}
+          </a>
+        </h3>
+
+        <p style="font-size:13px; color:#94a3b8; margin:5px 0;">
+          Source: {{ article.source }}
+        </p>
+
+        <p style="font-size:14px; margin:0;">
+          {{ article.summary }}
+        </p>
+      </div>
+
+    </div>
+  {% endfor %}
+</div>
+
         </ul>
     </div>
 </div>
+
 
 </body>
 </html>
