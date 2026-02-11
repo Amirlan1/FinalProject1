@@ -22,7 +22,7 @@ body{
 .topbar{
   position:sticky;
   top:0;
-  z-index:1000000;
+  z-index:10;
   display:flex;
   align-items:center;
   gap:16px;
@@ -212,15 +212,15 @@ a { color: inherit; text-decoration: none; }
 .accountBtn{ white-space: nowrap; }
 
 .menu{
-  position:fixed;
-  z-index: 1000001;
+  position:absolute;
+  right:0;
+  top:46px;
   min-width:220px;
   background: rgba(11,35,66,.98);
   border:1px solid var(--line);
   border-radius:12px;
   overflow:hidden;
   box-shadow: 0 14px 40px rgba(0,0,0,.35);
-  display:none;
 }
 
 .menuItem{
@@ -269,4 +269,120 @@ a { color: inherit; text-decoration: none; }
   gap:10px;
   flex-wrap:wrap;
   margin-top:6px;
+}
+
+.hidden { display: none; }
+
+.accountWrap { position: relative; }
+
+.menu{
+  z-index: 9999;
+}
+.topbar{
+  z-index: 1000000 !important;
+}
+
+.menu{
+  z-index: 1000001 !important;
+}
+
+.menu{ min-width: 220px; }
+.hidden{ display:none; }
+
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index: 2000000;
+}
+
+.modalCard{
+  width: 520px;
+  max-width: calc(100vw - 24px);
+  background: rgba(11,35,66,.98);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 22px 60px rgba(0,0,0,.55);
+}
+
+.modalHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.modalTitle{
+  font-weight:800;
+  color:#dbeafe;
+}
+
+.iconBtn{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--txt);
+  padding:6px 10px;
+  border-radius:10px;
+  cursor:pointer;
+}
+.iconBtn:hover{ background: rgba(16,53,97,.8); }
+
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index: 2000000;
+}
+
+.modal.hidden{ display:none; }
+
+.error{
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #fecaca;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.errRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.errText{
+  white-space: pre-wrap;
+  line-height: 1.25;
+}
+
+.errClose{
+  border: 1px solid rgba(239,68,68,.35);
+  background: transparent;
+  color: #fecaca;
+  border-radius: 10px;
+  padding: 2px 10px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.errClose:hover{
+  background: rgba(239,68,68,.12);
+}
+
+.toast{
+  position: fixed;
+  right: 12px;
+  top: 12px;
+  z-index: 3000000;
+  max-width: 520px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.35);
 }
