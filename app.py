@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request, Form, Query, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-import yfinance as yf
 from datetime import datetime
 import uvicorn
 from databasa import create_users_table, get_db, create_password_resets_table, ensure_consent_columns
@@ -82,29 +81,6 @@ class DepositReq(BaseModel):
     number: str = Field(..., min_length=12, max_length=32)
     exp: str = Field(..., min_length=4, max_length=7)
     cvc: str = Field(..., min_length=3, max_length=4)
-
-async def get_stock_data(ticker: str):
-    try:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period="1mo", interval="1d", actions=False, auto_adjust=False)
-    except Exception as e:
-        return [], f"yfinance error: {e}"
-
-    if hist is None or hist.empty:
-        return [], "No data from Yahoo. Try ticker like AAPL / MSFT / TSLA (crypto: BTC-USD)."
-
-    hist = hist.reset_index()
-
-    out = []
-    for i in range(len(hist)):
-        d = hist.loc[i, "Date"]
-        c = hist.loc[i, "Close"]
-        out.append({
-            "Date": d.strftime("%Y-%m-%d"),
-            "Close": float(c)
-        })
-
-    return out, None
 
 
 def sym_fix(symbol: str) -> str:
