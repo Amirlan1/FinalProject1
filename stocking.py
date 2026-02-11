@@ -19,7 +19,6 @@ class TradeReq(BaseModel):
     leverage: float | None = Field(None, ge=1, le=50)
 
 def liq_price(entry: float, lev: float, side: str) -> float:
-    # упрощённо (для демо): long ликвидируется при падении ~ на 1/lev
     if lev <= 1:
         return 0.0 if side == "long" else entry * 2
     if side == "long":
