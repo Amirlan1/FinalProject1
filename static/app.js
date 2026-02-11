@@ -128,6 +128,7 @@ function renderPositions(items){
   box.innerHTML = html;
 }
 
+
 function renderOrders(items){
   const box = el("ord");
   if (!box) return;
@@ -165,13 +166,13 @@ async function refreshSide(){
   if (el("mode")) el("mode").textContent = (acc.mode || "—").toUpperCase();
 
   const pos = await apiGet("/api/positions");
-lastPositions = pos || [];
-renderPositions(pos);
+  lastPositions = pos || [];
+  renderPositions(pos);
 
   const ord = await apiGet("/api/orders");
   renderOrders(ord);
-  
 }
+
 
 function buildPlot(bars, symbol){
   const t = bars.map(b => b.t);
@@ -690,3 +691,20 @@ function boot(){
 }
 
 window.addEventListener("load", boot);
+
+async function boot(){
+  if (__bootDone) return;
+  __bootDone = true;
+
+  try { menuInit(); } catch(e){ console.error(e); }
+  try { chartInit(); } catch(e){ console.error(e); }
+  try { profileInit(); } catch(e){ console.error(e); }
+  try { fundingInit(); } catch(e){ console.error(e); }
+  try { tradeInit(); } catch(e){ console.error(e); }
+
+  setTimeout(autoLoad, 50);
+  setTimeout(autoLoad, 1200);
+  setInterval(autoLoad, 5000);
+
+  await refreshSide();
+}

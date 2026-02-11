@@ -22,6 +22,7 @@ import pandas as pd
 import aiosmtplib
 from support import send_support_email
 
+from auto_save_middleware import setup_auto_save
 
 api_key = "d668impr01qots73m1e0d668impr01qots73m1eg" 
 url = f"https://finnhub.io/api/v1/news?category=general&token={api_key}"
@@ -34,6 +35,7 @@ db_path = db_folder / "users.db"
 
 ph = PasswordHasher()
 app = FastAPI()
+setup_auto_save(app)
 PRIVACY_VERSION = "1.0"
 
 templates = Jinja2Templates(directory="templates")
@@ -597,7 +599,6 @@ def api_positions():
                 "liq_price": round(liq_price(entry, lev, side), 4),
             })
         return JSONResponse(items)
-
 
 @app.post("/api/trade")
 def api_trade(request: Request, req: TradeReq):
