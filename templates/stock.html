@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Stocking</title>
 
+  <link rel="stylesheet" href="/static/consent.css" />
+  <script src="/static/consent.js" defer></script>
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="/static/app.js?v=999" defer></script>
@@ -144,6 +146,43 @@
   </div>
 </div>
 
+<div id="consentOverlay" class="consent-overlay" style="display:none;">
+  <div class="consent-modal">
+    <div class="consent-head">
+      <h2>Privacy Policy & Consent</h2>
+      <div class="consent-sub">Demo stock trading platform. No real trading. No real payments.</div>
+    </div>
+
+    <div class="consent-text">
+      <h3>Demo disclaimer</h3>
+      <p>This platform is a demo simulator. No real trades are executed and no real payments are processed.</p>
+
+      <h3>What data we process</h3>
+      <ul>
+        <li>Account data: username/login, email, password (stored as a secure hash).</li>
+        <li>Service data: actions inside the platform (demo portfolio, demo trades, settings).</li>
+        <li>Cards: the platform uses ONLY fake/generated card data for demonstration.</li>
+      </ul>
+
+      <h3>Confidentiality</h3>
+      <p>All stored data is treated as confidential within this demo project. Do not enter real banking details.</p>
+
+      <h3>Consent</h3>
+      <p>By clicking “Accept & Continue”, you agree to this processing for demo functionality.</p>
+    </div>
+
+    <label class="consent-check">
+      <input id="consentChk" type="checkbox" />
+      I have read and agree.
+    </label>
+
+    <div class="consent-actions">
+      <button id="consentBtn" class="consent-btn" disabled>Accept & Continue</button>
+    </div>
+
+    <div id="consentErr" class="consent-error" style="display:none;"></div>
+  </div>
+</div>
 
 </body>
 </html>

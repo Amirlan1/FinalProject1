@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 import yfinance as yf
 from datetime import datetime
 import uvicorn
-from databasa import create_users_table, get_db, create_password_resets_table
+from databasa import create_users_table, get_db, create_password_resets_table, ensure_consent_columns
 import sqlite3
 from fastapi import status
 import os
@@ -20,12 +20,19 @@ import threading
 import requests
 import pandas as pd
 
+load_dotenv()
+api_key = "d668impr01qots73m1e0d668impr01qots73m1eg" 
+url = f"https://finnhub.io/api/v1/news?category=general&token={api_key}"
+
+response = requests.get(url)
+news = response.json()
 BASE_DIR = Path(__file__).resolve().parent
 db_folder = BASE_DIR / "db"
 db_path = db_folder / "users.db"
 
 ph = PasswordHasher()
 app = FastAPI()
+PRIVACY_VERSION = "1.0"
 
 templates = Jinja2Templates(directory="templates")
 
@@ -36,6 +43,9 @@ except:
 
 create_users_table()
 create_password_resets_table()
+create_users_table()
+create_password_resets_table()
+ensure_consent_columns()
 
 lock = threading.Lock()
 state = {
@@ -203,13 +213,61 @@ def get_current_user(request: Request):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, username, email FROM users WHERE id = ?",
+        "SELECT id, username, email, privacy_version, privacy_accepted_at FROM users WHERE id = ?",
         (user_id,)
     )
     user = cursor.fetchone()
     conn.close()
     return user
 
+def consent_ok(user) -> bool:
+    if not user:
+        return False
+    pv = user[3]
+    pa = user[4]
+    return (pa is not None) and (pv == PRIVACY_VERSION)
+
+def require_login(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    return user
+
+def require_consent(request: Request):
+    user = require_login(request)
+    if not consent_ok(user):
+        raise HTTPException(status_code=403, detail="Consent required")
+    return user
+
+@app.get("/api/me")
+def api_me(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    return {
+        "id": user[0],
+        "username": user[1],
+        "email": user[2],
+        "privacyAccepted": consent_ok(user),
+        "privacyVersion": PRIVACY_VERSION
+    }
+
+@app.post("/api/consent/accept")
+def api_consent_accept(request: Request):
+    user = require_login(request)
+
+    now = datetime.utcnow().isoformat()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET privacy_version = ?, privacy_accepted_at = ? WHERE id = ?",
+        (PRIVACY_VERSION, now, user[0])
+    )
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "privacyAccepted": True, "privacyVersion": PRIVACY_VERSION}
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -338,7 +396,7 @@ def profile(request: Request):
     if not user:
         return RedirectResponse("/login")
 
-    user_id, username, email = user
+    user_id, username, email, pv, pa = user
 
     return templates.TemplateResponse(
         "profile.html",
@@ -417,7 +475,8 @@ def api_mode():
 
 
 @app.post("/api/mode")
-def api_set_mode(mode: str = Query(...)):
+def api_set_mode(request: Request, mode: str = Query(...)):
+    require_consent(request)
     m = mode.strip().lower()
     if m not in ["demo", "real"]:
         raise HTTPException(400, "mode must be demo or real")
@@ -433,7 +492,8 @@ def api_profile():
 
 
 @app.post("/api/profile")
-def api_profile_set(username: str = Query(..., min_length=2, max_length=32)):
+def api_profile_set(request: Request, username: str = Query(..., min_length=2, max_length=32)):
+    require_consent(request)
     with lock:
         state["profile"]["username"] = username.strip()
     return {"ok": True}
@@ -520,7 +580,8 @@ def api_positions():
 
 
 @app.post("/api/trade")
-def api_trade(req: TradeReq):
+def api_trade(request: Request, req: TradeReq):
+    require_consent(request)
     sym = req.symbol.strip().upper()
     act = req.action.strip().lower()
     if act not in ["open", "close"]:
@@ -709,20 +770,22 @@ def api_order(
 
 
 @app.post("/api/reset")
-def api_reset():
+def api_reset(request: Request):
+    require_consent(request)
     with lock:
         m = cur_mode()
         state["accounts"][m] = {
-            "cash": (10000.0 if m == "demo" else 0.0), 
-            "positions": {}, 
-            "orders": [], 
+            "cash": (10000.0 if m == "demo" else 0.0),
+            "positions": {},
+            "orders": [],
             "order_id": 1
         }
     return {"ok": True}
 
 
 @app.post("/api/deposit")
-def api_deposit(req: DepositReq):
+def api_deposit(request: Request, req: DepositReq):
+    require_consent(request)
     if cur_mode() != "real":
         raise HTTPException(400, "Deposit works only in REAL mode")
 
@@ -753,10 +816,10 @@ def api_deposit(req: DepositReq):
 
 
 @app.post("/api/withdraw")
-def api_withdraw(amount: float = Query(..., gt=0, le=1_000_000)):
+def api_withdraw(request: Request, amount: float = Query(..., gt=0, le=1_000_000)):
+    require_consent(request)
     if cur_mode() != "real":
         raise HTTPException(400, "Withdraw works only in REAL mode")
-
     with lock:
         acc = cur_acc()
         if float(acc["cash"]) < float(amount):

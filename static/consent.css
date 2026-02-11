@@ -1,0 +1,63 @@
+.consent-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  z-index:99999;
+}
+.consent-modal{
+  width:100%;
+  max-width:900px;
+  background:#0b1f3a;
+  color:#e7f0ff;
+  border:1px solid #173a63;
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 18px 60px rgba(0,0,0,.35);
+}
+.consent-head h2{ margin:0 0 6px 0; font-size:20px; }
+.consent-sub{ font-size:13px; color:#9bb3d1; margin-bottom:12px; }
+
+.consent-text{
+  border:1px solid #173a63;
+  border-radius:12px;
+  padding:12px;
+  max-height:45vh;
+  overflow:auto;
+  background:#071529;
+  font-size:14px;
+  line-height:1.45;
+}
+.consent-check{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:12px;
+  font-size:14px;
+}
+.consent-actions{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:12px;
+}
+.consent-btn{
+  padding:10px 14px;
+  border:none;
+  border-radius:10px;
+  background:#3b82f6;
+  color:#fff;
+  cursor:pointer;
+  font-weight:700;
+}
+.consent-btn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+.consent-error{
+  margin-top:10px;
+  color:#ff9aa2;
+  font-size:13px;
+}

@@ -47,3 +47,20 @@ def create_password_resets_table():
     ''')
     conn.commit()
     conn.close()
+
+import sqlite3
+
+def ensure_consent_columns():
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(users)")
+    cols = [row[1] for row in cur.fetchall()]
+
+    if "privacy_version" not in cols:
+        cur.execute("ALTER TABLE users ADD COLUMN privacy_version TEXT")
+
+    if "privacy_accepted_at" not in cols:
+        cur.execute("ALTER TABLE users ADD COLUMN privacy_accepted_at TEXT")
+
+    conn.commit()
+    conn.close()

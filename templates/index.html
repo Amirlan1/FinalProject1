@@ -70,9 +70,14 @@
     <p></p>
 
     <div class="buttons">
-        <a href="/register">Регистрация</a>
-        <a href="/login">Вход</a>
-    </div>
+  {% if user %}
+    <a href="/profile">Профиль</a>
+    <a href="/logout">Выход</a>
+  {% else %}
+    <a href="/register">Регистрация</a>
+    <a href="/login">Вход</a>
+  {% endif %}
+</div>
 </header>
 
 <div class="container">
