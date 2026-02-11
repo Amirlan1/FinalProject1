@@ -348,26 +348,21 @@ function menuInit(){
   menu.style.zIndex = "1000001";
   menu.style.display = "none";
 
-  const pad = 12;
-
   function openMenu(){
     const r = btn.getBoundingClientRect();
+    const pad = 12;
 
     menu.style.display = "block";
     menu.classList.remove("hidden");
-    menu.hidden = false;
-    menu.removeAttribute("hidden");
 
     const mw = menu.offsetWidth || 220;
     const mh = menu.offsetHeight || 200;
 
     let left = r.right - mw;
-
     if (left < pad) left = pad;
     if (left + mw > window.innerWidth - pad) left = window.innerWidth - pad - mw;
 
     let top = r.bottom + 8;
-
     if (top + mh > window.innerHeight - pad) {
       top = Math.max(pad, r.top - mh - 8);
     }
@@ -392,13 +387,33 @@ function menuInit(){
     else openMenu();
   });
 
-  menu.addEventListener("click", (e) => {
+  menu.addEventListener("click", (e) => e.stopPropagation());
+
+
+  const toDemo = el("toDemo");
+  const toReal = el("toReal");
+
+  if (toDemo) toDemo.addEventListener("click", async (e)=>{
+    e.preventDefault();
     e.stopPropagation();
+    try{
+      await setMode("demo");
+      closeMenu();
+    }catch(err){ showError(err.message); }
   });
 
-  document.addEventListener("click", () => {
-    closeMenu();
+  if (toReal) toReal.addEventListener("click", async (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    try{
+      await setMode("real");
+      closeMenu();
+    }catch(err){ showError(err.message); }
   });
+
+ 
+  document.addEventListener("click", () => closeMenu());
+
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMenu();
@@ -407,11 +422,8 @@ function menuInit(){
   window.addEventListener("resize", () => {
     if (isOpen()) openMenu();
   });
-
-  window.addEventListener("scroll", () => {
-    if (isOpen()) openMenu();
-  }, true);
 }
+
 
 
 
