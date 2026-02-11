@@ -11,7 +11,28 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+class TradeReq(BaseModel):
+    symbol: str = Field(..., min_length=1, max_length=12)
+    action: str = Field(..., description="open|close")
+    side: str | None = Field(None, description="long|short (needed for open)")
+    qty: int = Field(..., ge=1, le=1_000_000)
+    leverage: float | None = Field(None, ge=1, le=50)
 
+def liq_price(entry: float, lev: float, side: str) -> float:
+    # упрощённо (для демо): long ликвидируется при падении ~ на 1/lev
+    if lev <= 1:
+        return 0.0 if side == "long" else entry * 2
+    if side == "long":
+        return max(0.0, entry * (1.0 - 1.0 / lev))
+    else:
+        return entry * (1.0 + 1.0 / lev)
+
+def pos_pnl(entry: float, price: float, qty: int, side: str) -> float:
+    if side == "long":
+        return (price - entry) * qty
+    else:
+        return (entry - price) * qty
+    
 BASE = Path(__file__).resolve().parent
 
 app = FastAPI()
@@ -234,20 +255,157 @@ def api_positions():
         items = []
         for sym, p in acc["positions"].items():
             pr = last_price(sym_fix(sym))
+
+            side = p.get("side", "long")
             qty = int(p["qty"])
-            avg = float(p["avg"])
+            entry = float(p["entry"])
+            lev = float(p.get("leverage", 1.0))
+            margin = float(p.get("margin", 0.0))
+
+            pnl = pos_pnl(entry, pr, qty, side)
             mv = qty * pr
-            upl = (pr - avg) * qty
+
             items.append({
                 "symbol": sym,
+                "side": side,
                 "qty": qty,
-                "avg_entry_price": round(avg, 4),
+                "entry_price": round(entry, 4),
                 "current_price": round(pr, 4),
                 "market_value": round(mv, 2),
-                "unrealized_pl": round(upl, 2),
+                "leverage": lev,
+                "margin": round(margin, 2),
+                "unrealized_pl": round(pnl, 2),
+                "liq_price": round(liq_price(entry, lev, side), 4),
             })
         return JSONResponse(items)
 
+@app.post("/api/trade")
+def api_trade(req: TradeReq):
+    sym = req.symbol.strip().upper()
+    act = req.action.strip().lower()
+    if act not in ["open", "close"]:
+        raise HTTPException(400, "action must be open or close")
+
+    with lock:
+        acc = cur_acc()
+        positions = acc["positions"]
+
+    sfix = sym_fix(sym)
+    price = last_price(sfix)
+
+    with lock:
+        acc = cur_acc()
+        positions = acc["positions"]
+
+        # --- OPEN ---
+        if act == "open":
+            side = (req.side or "").strip().lower()
+            if side not in ["long", "short"]:
+                raise HTTPException(400, "side must be long or short for open")
+
+            lev = float(req.leverage or 1.0)
+            if lev < 1:
+                lev = 1.0
+
+            # запрет long+short одновременно по одному символу
+            if sym in positions and positions[sym].get("side") != side:
+                raise HTTPException(400, "You already have opposite position on this symbol. Close it first.")
+
+            notional = req.qty * price
+            margin_need = notional / lev
+
+            if float(acc["cash"]) < margin_need:
+                raise HTTPException(400, "Not enough cash for margin")
+
+            # списываем маржу
+            acc["cash"] = float(acc["cash"]) - margin_need
+
+            if sym not in positions:
+                positions[sym] = {
+                    "side": side,
+                    "qty": int(req.qty),
+                    "entry": float(price),
+                    "leverage": float(lev),
+                    "margin": float(margin_need),
+                }
+            else:
+                # добавляем к позиции (только если плечо совпадает)
+                old = positions[sym]
+                if float(old.get("leverage", 1.0)) != float(lev):
+                    raise HTTPException(400, "Leverage must match existing position (close first to change).")
+
+                oldq = int(old["qty"])
+                olde = float(old["entry"])
+                newq = oldq + int(req.qty)
+                newe = (oldq * olde + int(req.qty) * price) / newq
+
+                old["qty"] = newq
+                old["entry"] = newe
+                old["margin"] = float(old.get("margin", 0.0)) + float(margin_need)
+
+            oid = int(acc["order_id"])
+            acc["order_id"] = oid + 1
+            acc["orders"].append({
+                "id": oid,
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "trade",
+                "symbol": sym,
+                "action": "open",
+                "side": side,
+                "qty": int(req.qty),
+                "price": round(float(price), 4),
+                "leverage": float(lev),
+                "mode": cur_mode(),
+            })
+
+            return {"ok": True}
+
+        # --- CLOSE ---
+        if sym not in positions:
+            raise HTTPException(400, "No position to close for this symbol")
+
+        p = positions[sym]
+        side = p.get("side", "long")
+        qty_have = int(p["qty"])
+        if req.qty > qty_have:
+            raise HTTPException(400, "Close qty is bigger than position qty")
+
+        entry = float(p["entry"])
+        lev = float(p.get("leverage", 1.0))
+        margin_total = float(p.get("margin", 0.0))
+
+        # доля закрытия
+        frac = req.qty / qty_have
+        margin_release = margin_total * frac
+
+        pnl = pos_pnl(entry, price, int(req.qty), side)
+
+        # возвращаем маржу + PnL
+        acc["cash"] = float(acc["cash"]) + float(margin_release) + float(pnl)
+
+        # уменьшаем позицию
+        left = qty_have - int(req.qty)
+        if left == 0:
+            del positions[sym]
+        else:
+            p["qty"] = left
+            p["margin"] = margin_total - margin_release
+
+        oid = int(acc["order_id"])
+        acc["order_id"] = oid + 1
+        acc["orders"].append({
+            "id": oid,
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "type": "trade",
+            "symbol": sym,
+            "action": "close",
+            "side": side,
+            "qty": int(req.qty),
+            "price": round(float(price), 4),
+            "mode": cur_mode(),
+        })
+
+        return {"ok": True}
 
 @app.get("/api/orders")
 def api_orders():

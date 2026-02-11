@@ -7,7 +7,8 @@
 
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-  <script src="/static/app.js" defer></script>
+  <script src="/static/app.js?v=999" defer></script>
+
 </head>
 
 <body>
@@ -41,9 +42,7 @@
 
       <button id="btnLoad" class="btn primary">Load</button>
       <button id="btnMA" class="btn">MA 20/50</button>
-      <button id="btnBuy" class="btn good">Buy 1</button>
-      <button id="btnSell" class="btn bad">Sell 1</button>
-      <button id="btnReset" class="btn ghost">Reset</button>
+      <button id="btnTrade" class="btn primary">Trade</button>
     </div>
 
     <div class="rightinfo">
@@ -77,11 +76,11 @@
     <div class="main">
       <div class="panelTitle">
         <div id="title">Chart</div>
-        <div class="hint">Modebar: line/rect/circle + eraser</div>
+        <div class="hint">Modebar</div>
       </div>
 
       <div id="chart" class="chart"></div>
-      <div class="note">История: Stooq daily. Не real-time.</div>
+      <div class="note">Stooq daily Not real-time.</div>
     </div>
 
     <div class="side">
@@ -98,5 +97,53 @@
       <div id="err" class="error hidden"></div>
     </div>
   </div>
+
+  <div id="tradeModal" class="modal hidden">
+  <div class="modalCard">
+    <div class="modalHead">
+      <div class="modalTitle">Trade: <span id="tmSym">AAPL</span></div>
+      <button id="tmX" class="iconBtn">✕</button>
+    </div>
+
+    <div class="formGrid">
+      <div>
+        <div class="k">Qty</div>
+        <input id="tmQty" class="input w100" type="number" value="1" min="1" step="1">
+      </div>
+
+      <div>
+        <div class="k">Leverage</div>
+        <select id="tmLev" class="input w100">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="3">3x</option>
+          <option value="5">5x</option>
+          <option value="10">10x</option>
+          <option value="20">20x</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="k">Direction</div>
+        <select id="tmSide" class="input w100">
+          <option value="long">Long</option>
+          <option value="short">Short</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="k">Info</div>
+        <div id="tmInfo" class="miniVal">—</div>
+      </div>
+    </div>
+
+    <div class="rowBtns" style="margin-top:12px;">
+      <button id="tmOpen" class="btn good">Open</button>
+      <button id="tmClosePos" class="btn bad">Close</button>
+    </div>
+  </div>
+</div>
+
+
 </body>
 </html>
