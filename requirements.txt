@@ -9,3 +9,4 @@ argon2-cffi
 auth
 fastapi_mail
 aiosmtplib
+passlib
